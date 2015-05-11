@@ -21,7 +21,7 @@ removeDuplicates <- function(dobvector, days.ignore,
 
   # Make sure we have required libraries 
   if (require("dplyr")) {
-    print("dplyr is loaded correctly")
+#     print("dplyr is loaded correctly")
   } else {
     print("trying to install dplyr")
     install.packages("dplyr")
@@ -84,13 +84,13 @@ removeDuplicates <- function(dobvector, days.ignore,
   
   # Tally up total dates and unique dates overall.
   # Set up cases dataframe to make it easy to count unique dates
-  cases <- data.frame(dob = dobdata,birthyear = birth.year, birthday = birth.day)
+  cases <- data.frame(dob = dob.data,birthyear = birth.year, birthday = birth.day)
   
   total.cases <- count(cases,birthyear)
   unique.dates <- cases %>% 
     dplyr::group_by(birthyear) %>% 
     summarise(n = dplyr::n_distinct(dob))
-  possible.days <- yeardays[match(total.cases$birthyear,years)]
+  possible.days <- year.days[match(total.cases$birthyear,years)]
   
   sub.total.cases <- count(cases[!(cases$birthday %in% days.ignore),],birthyear)
   sub.unique.dates <- cases[!(cases$birthday %in% days.ignore),] %>% 
@@ -98,7 +98,7 @@ removeDuplicates <- function(dobvector, days.ignore,
   possible.days.ignore <- year.days.ignore[match(sub.total.cases$birthyear,years)]
   
   # Calculate result vectors
-  unique.cases <- possible.days * log(possibleDays / (possible.days - unique.dates$n))
+  unique.cases <- possible.days * log(possible.days / (possible.days - unique.dates$n))
   variance.cases <- possible.days * unique.dates$n / (possible.days - unique.dates$n)
   
   unique.sub.cases <- possible.days.ignore * log(possible.days.ignore / 
@@ -138,7 +138,7 @@ removeDuplicates <- function(dobvector, days.ignore,
     # Fill in data frame for output
     output$birthyear <- years
     output$cases[match(total.cases$birthyear,output$birthyear)] <- total.cases$n
-    output$days <- yeardays
+    output$days <- year.days
     output$totaldates[match(unique.dates$birthyear,output$birthyear)] <- unique.dates$n
     output$unique[match(unique.dates$birthyear,output$birthyear)] <- unique.cases
     output$variance[match(unique.dates$birthyear,output$birthyear)] <- variance.cases
