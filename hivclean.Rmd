@@ -22,8 +22,9 @@ require(utils)
 setwd(file.path(path.expand("~/"),"Documents","Research","!Evaluation_Modelling","project_care_cascades","code"))
 
 # Base directory
-basePath <- "~/Documents/Research/!Evaluation_Modelling/project_care_cascades/"
-cleanDataFolder <- file.path("..","data")
+dataPath <- file.path(path.expand("~/"),"Research","!Evaluation_Modelling","data")
+basePath <- "~/Research/!Evaluation_Modelling/project_care_cascades/"
+cleanDataFolder <- file.path(basePath,"data")
 
 # Primary script parameters
 dataYear <- 2013
@@ -33,9 +34,8 @@ dataYear <- 2013
 ## HIV Notifications
 
 ```{r notifications}
-# Data directories and files
-rawdata <- file.path(path.expand("~/"),"Documents","Research","!Evaluation_Modelling","data",
-                     paste("rawHIVnotifications-", toString(dataYear), ".xls",sep=""))
+# Raw HIV notifications file
+rawdata <- file.path(dataPath,paste("rawHIVnotifications-", toString(dataYear), ".xls",sep=""))
 
 # Load the raw HIV notifications file and clean it up
 hivdata <- read_excel(rawdata, na = "NA")
@@ -109,5 +109,69 @@ hivdata[hivdata$exposure == "5A4",]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5B",]$exposure <- "unknown"
 
 # Save cleaned hivdata
-write.csv(hivdata, file = file.path(cleanDataFolder, paste("hivnotifications",toString(analysisYear),".csv", sep ="")))
+write.csv(hivdata, file = file.path(cleanDataFolder, paste("hivnotifications",toString(analysisYear),".csv", sep ="")), row.names = FALSE)
+```
+
+## Prospection PharmDash HIV Treatment Data
+
+Description of the output from Prospection and the cleaning process.
+
+```{r prospection}
+# Raw prospection file
+rawPharmDash <- file.path(dataPath,paste("PharmDash_HIV_Patients_Treatment-", toString(dataYear+1), ".csv",sep=""))
+
+# Data only reliable from 2013
+startyear <- 2013
+
+# Load the raw HIV notifications file and clean it up. The exported data from 
+# PharmDash is a little messy. Need to skip the first 3 rows. Then tidy up and 
+# extract the data we want. Only valuable from the year 2013
+pharmData <- read.csv(rawPharmDash,skip = 3,na.strings = c("NA", ""))
+pharmData <- pharmData[!apply(is.na(pharmData) | pharmData == "", 1, all), ] # Remove empty rows
+pharmData$X <- as.character(pharmData$X) # Make sure first column is a character string
+
+# Filter and select rows and columns we need. Filter removes the rows with "Growth"
+# in the category. Select uses a regular expression that 
+# matches the years 2013 to 2099 which should be enough :-)
+pharmData <- pharmData %>%
+  filter(!(c(1:nrow(pharmData)) %in% grep("Growth",pharmData$X))) %>%
+  select(matches("X$|^X20[1-9][3-9].Dec"))
+
+# Tidy up column names
+nyears <- ncol(pharmData)-1
+years <- c(startyear:((startyear-1)+nyears))
+charyears <- paste("X", as.character(years),sep = "")
+colnames(pharmData) <- c("category",charyears)
+
+# Convert everything to character class for the next step of manipulation
+pharmData <- data.frame(lapply(pharmData, as.character), stringsAsFactors = FALSE)
+
+# Add new columns for state and gender
+pharmData$gender <- rep(NA,nrow(pharmData))
+pharmData$state <- rep(NA,nrow(pharmData))
+
+pharmData$gender[grep("^M,",pharmData$category)] <- "m"
+pharmData$gender[grep("^F,",pharmData$category)] <- "f"
+pharmData$gender[grep("^All Genders,",pharmData$category)] <- "all"
+
+states <- c("WA","VIC","TAS","SA","QLD","NT","NSW","ACT")
+for (ii in seq(along = states)){
+  pharmData$state[grep(paste(states[ii],"$",sep = ""),pharmData$category)] <- tolower(states[ii])
+}
+
+pharmData$state[grep("All States",pharmData$category)] <- "all"
+
+# Replace less than equals with equals and convert to numeric
+for (ii in seq(along = charyears)){
+  pharmData[,charyears[ii]] <- as.numeric(gsub("^<= ","",pharmData[,charyears[ii]]))
+}
+
+# Remove category variable and reorder
+pharmData <- pharmData %>%
+  select(-category) %>%
+  select(gender, state, num_range("X",years))
+
+# Finally have it a relatively tidy format so save to output file
+write.csv(pharmData, file = file.path(cleanDataFolder, paste("pharmdash_HIVpatients",toString(years[length(years)]),".csv", sep ="")), row.names = FALSE)
+
 ```
