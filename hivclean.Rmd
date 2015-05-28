@@ -33,6 +33,21 @@ dataYear <- 2013
 
 ## HIV Notifications
 
+For the purposes of the HIV cascade calculations and Annual Surviellance Report 
+we group notifications into broad exposure categories. The following modes of 
+exposure are used:
+* msm - includes msm, msm-idu, bisexual males, bisexual male IDU
+* pwid -  idu, heterosexual-idu
+* hetero - hetero, hetero-unspecified
+* other - everything else
+
+We also use broad population categories:
+* non-indigenous - Austrlian born
+* indigenous - Australian born
+* seasia - South East Asia
+* ssafrica - Sub-sharan Africa
+
+
 ```{r notifications}
 # Raw HIV notifications file
 rawdata <- file.path(dataPath,paste("rawHIVnotifications-", toString(dataYear), ".xls",sep=""))
@@ -108,6 +123,23 @@ hivdata[hivdata$exposure == "5A3",]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5A4",]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5B",]$exposure <- "unknown"
 
+# Add a broad exposure category indicator. 
+msmgroup <- c("msm","bisex-male","bisex-male-idu","msm-idu")
+pwidgroup <- c("idu","hetero-idu")
+heterogroup <- c("hetero","hetero-unspecified")
+othergroup <- c("unknown","high-prev-country","mtct","blood-recipient")
+
+hivdata$expgroup <- rep(NA,nrow(hivdata))
+hivdata[hivdata$exposure %in% msmgroup,]$expgroup <- "msm"
+hivdata[hivdata$exposure %in% pwidgroup,]$expgroup <- "pwid"
+hivdata[hivdata$exposure %in% heterogroup,]$expgroup <- "hetero"
+hivdata[hivdata$exposure %in% othergroup,]$expgroup <- "other"
+
+# Add a broad population code and indigenous code
+
+# TODO: Add population grouping
+
+
 # Save cleaned hivdata
 write.csv(hivdata, file = file.path(cleanDataFolder, paste("hivnotifications",toString(analysisYear),".csv", sep ="")), row.names = FALSE)
 ```
@@ -173,5 +205,26 @@ pharmData <- pharmData %>%
 
 # Finally have it a relatively tidy format so save to output file
 write.csv(pharmData, file = file.path(cleanDataFolder, paste("pharmdash_HIVpatients",toString(years[length(years)]),".csv", sep ="")), row.names = FALSE)
+
+```
+
+## Old Treament Spending Data
+
+To get trends in number on treatment I use the total spending data from a PBS spending data set provided by Hamish McManus
+
+```{r s100}
+# Raw s100 spending file
+rawS100 <- file.path(dataPath,"S100_2015.xls",sep="")
+
+#Load the raw HIV notifications file and clean it up
+s100data <- read_excel(rawS100, na = "NA")
+
+# Calculate total cost for drugs in each financial year
+artCost <- s100data %>% 
+  group_by(financialyear) %>% 
+  summarise(totalspend = sum(totalcost))
+
+# Save cleaned hivdata
+write.csv(artCost, file = file.path(cleanDataFolder, paste("s100_treatment_costs.csv", sep ="")), row.names = FALSE)
 
 ```
