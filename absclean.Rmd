@@ -1,0 +1,224 @@
+ABS data cleaning 
+=================
+  
+This script is used to load and clean raw demographic data from the 
+Australian Burea of Statistica (ABS). These data are primarily used for 
+care cascade calculations but can be useful for Australian evaluation models
+in general. The resulting cleaned data sets are saved as dataframes in csv 
+files in the ~/Evaluation\_Modelling/data/ folder. 
+
+```{r initialization}
+# Clear workspace
+rm(list=ls()) 
+
+# Libraries for data manipulation
+require(readxl)
+require(dplyr)
+require(tidyr)
+require(utils)
+
+# Key folder paths
+basePath <- file.path(path.expand("~"),"Research","!Evaluation_Modelling")
+absFolder <- file.path(basePath,"data","ABS") # Folder with the raw ABS data
+# dataPath <- file.path(basePath,"data","raw")
+cleanDataFolder <- file.path(basePath,"data")
+
+# Set working directory
+setwd(file.path(basePath,"code"))
+
+# Order of states used by ABS
+states <- c("nsw","vic","qld","sa","wa","tas","nt","act","all")
+
+# Primary script parameters
+# dataYear <- 2013
+
+```
+
+## Proportion of people who leave Australia
+
+The final R chuck extracts net overseas migration and estimated resident 
+popultion data. It is primarily used to estimate the proportion of the 
+which moves overseas each year population 
+
+```{r migration}
+# This script cleans the ABS data into the format we want. The raw data is 
+# always on the second sheet of the .xls data file.
+
+### Process ERP data
+
+# Read in second sheet skipping most of the bumph
+erpdata <- read_excel(file.path(absFolder,"310104-ABS_ERP_State_Overall.xls"),
+                      sheet = 2, skip = 9)
+
+# Delete unnecessary columns (keeping the last nine) 
+ncolumns <- ncol(erpdata)
+erpdata <- erpdata[,c(1,20:28)]
+
+# Convert first column to years 
+erpdata[,1] <- format(erpdata[,1],"%Y")
+
+# Rename columns
+colnames(erpdata) <- c("year",states)
+
+# Remove unnecessary rows (keeping the final quarter data for each year)
+# Starts in second quarter 1981 so selected ever third row
+nrows <- nrow(erpdata)
+erpdata <- slice(erpdata,seq(3,135,by = 4))
+
+# Reshape into long format
+erpdata <- gather(erpdata,state,erp,2:10)
+erpdata <- arrange(erpdata,year)
+
+# Convert to correct data types
+erpdata$year <- as.numeric(erpdata$year)
+erpdata$state <- as.character(erpdata$state)
+
+### Process departure data - Have to read in 9 sheets
+
+# Need to specify years first
+years <- 2004:2012
+
+# Initilize results data frame
+nomdata <- data.frame(year = as.numeric(),
+                      state = as.numeric(),
+                      arrivales = as.numeric(),
+                      departures = as.numeric(),
+                      nom = as.numeric()
+)
+
+# Loop through sheets extracting data we want
+for (ii in seq(along=years)+1) {
+  
+  # Read in sheet from file
+  tempdata <- read_excel(file.path(absFolder,"34120do007_201314-ABS_Migration_NOM.xls"),
+                         sheet = ii, skip = 5)
+  
+  # Replace annoying column names
+  colnames(tempdata) <- c("state","grouping","category","arrivals","departures","nom")
+  
+  # Select the data we want
+  tempdata <- tempdata %>%
+    select(-category) %>%
+    filter(grouping == "Total")
+  
+  # General tiding up and add year of data to front
+  tempdata$state <- states
+  tempdata <- select(tempdata,-grouping) 
+  tempdata$year <- rep(years[ii-1],nrow(tempdata)) 
+  tempdata <- select(tempdata,year,everything())  # Put year first
+  
+  # Append to final results
+  nomdata <- rbind(nomdata,tempdata)
+}
+
+# Order nomdata by state
+nomdata <- arrange(nomdata,year)
+
+# Join th nomdata and erpdata sets. 
+migrationData <- inner_join(erpdata,nomdata,by=c("year","state"))
+
+# Save the final cleaned data set 
+write.csv(migrationData, file = file.path(cleanDataFolder, "ABS_migration_clean.csv"), row.names = FALSE)
+
+```
+
+## Proportion of people who move interstate
+
+```{r interstate}
+
+### Process arrivals read in second sheet
+arrdata <- read_excel(file.path(absFolder,"3101016a-ABS_Interstate_Arrivals.xls"),
+                      sheet = 2, skip = 9)
+
+# Convert first column to years 
+arrdata[,1] <- format(arrdata[,1],"%Y")
+
+# Convert colnames
+colnames(arrdata) <- c("year",states)
+
+# Remove first three rows as they form an incomplete year
+nrows <- nrow(arrdata)
+arrdata <- arrdata[4:nrows,]
+
+# Sum the year data cumulative and then slice to select every fourth row 
+# (corresponding to total for the year)
+
+# First gather into long format
+arrdata <- gather(arrdata, state,qtr_arrivals,2:10) 
+
+# Now do the processing
+arrdata <- arrdata %>%
+  group_by(year,state) %>%
+  mutate(arrivals = cumsum(qtr_arrivals)) %>%
+  ungroup() %>%
+  slice(seq(4,1188, by =4)) %>%
+  select(-qtr_arrivals)
+ 
+
+### Process departures
+depdata <- read_excel(file.path(absFolder,"3101016b-ABS_Interstate_Departures.xls"),
+                      sheet = 2, skip = 9)
+
+# Convert first column to years 
+depdata[,1] <- format(depdata[,1],"%Y")
+
+# Convert colnames
+colnames(depdata) <- c("year",states)
+
+# Remove first three rows as they form an incomplete year
+nrows <- nrow(depdata)
+depdata <- depdata[4:nrows,]
+
+# Sum the year data cumulative and then slice to select every fourth row 
+# (corresponding to total for the year)
+
+# First gather into long format
+depdata <- gather(depdata, state,qtr_departures,2:10) 
+
+# Now do the processing
+depdata <- depdata %>%
+  group_by(year,state) %>%
+  mutate(departures = cumsum(qtr_departures)) %>%
+  ungroup() %>%
+  slice(seq(4,1188, by =4)) %>%
+  select(-qtr_departures)
+
+# Join the arrivals and departures data frames
+interstateData <- inner_join(arrdata,depdata,by=c("year","state"))
+
+# Save the final cleaned data set 
+write.csv(interstateData, file = file.path(cleanDataFolder, "ABS_interstate_clean.csv"), row.names = FALSE)
+
+```
+
+## Estimated resident population for each age and sex
+
+This R chuck cleans the ERP data by sex ang age provided by the ABS. It is 
+currently used in the Chlamydia incidence model. 
+
+```{r grouppop}
+
+### Process ERP for sex and age from second and third sheets
+erpdata1 <- read_excel(file.path(absFolder,"3101059-ABS_ERP_Age_Sex.xls"),
+                      sheet = 2, skip = 9)
+
+erpdata2 <- read_excel(file.path(absFolder,"3101059-ABS_ERP_Age_Sex.xls"),
+                      sheet = 3, skip = 9)
+
+# Combine data frames
+erpasdata <- cbind(erpdata1,erpdata2[,2:ncol(erpdata2)])
+
+# Setup column names - 101 ages for males, females and all
+ages <- as.character(0:100)
+colnames(erpasdata) <- c("year",paste("males-",ages,sep = ""),
+                         paste("females-",ages,sep = ""),
+                         paste("all-",ages,sep = ""))
+
+# Convert first column to years 
+erpasdata[,1] <- format(erpasdata[,1],"%Y")
+erpasdata$year <- as.numeric(erpasdata$year)
+
+# Save the final cleaned data set 
+write.csv(erpasdata, file = file.path(cleanDataFolder, "ABS_ERP_sex_age_clean.csv"), row.names = FALSE)
+
+```
