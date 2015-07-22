@@ -1,0 +1,123 @@
+MBS data cleaning 
+=================
+  
+This script is used to load and clean raw service usage data from the 
+Australian Medicare Benefits Scheme (MBS). These data are primarily used for 
+care cascade calculations but can be useful for Australian evaluation models
+in general. The resulting cleaned data sets are saved as dataframes in csv 
+files in the ~/Evaluation\_Modelling/data/ folder. 
+
+```{r initialization}
+# Clear workspace
+rm(list=ls()) 
+
+# Libraries for data manipulation
+require(readxl)
+require(dplyr)
+require(tidyr)
+require(utils)
+
+# Key folder paths
+basePath <- file.path(path.expand("~"),"Research","!Evaluation_Modelling")
+mbsFolder <- file.path(basePath,"data","MBS") # Folder with the raw MBS data
+cleanDataFolder <- file.path(basePath,"data")
+
+# Set working directory
+setwd(file.path(basePath,"code"))
+
+# Order of states used by MBS
+states <- c("nsw","vic","qld","sa","wa","tas","act","nt","all")
+
+# Primary script parameters
+startyear <- 2003
+endyear <- 2014
+
+# File tag
+mbsFile <- "MBS_Data_"
+
+```
+
+### HIV testing data 
+
+This R chuck extracts the CD4 and viral load testing numbers from the yearly item number data. 
+
+```{r hivtesting}
+# The script cleans the MBS HIV testing data into the format we want. 
+
+# Item numbers for HIV testing
+items <- c(69378, 69381, 71139)
+
+# Number of rows to extract for each item - manually entered as each item is 
+# slightly different
+extractRows <- c(30, 30, 36) # 
+skipRows <- c(5, 5, 5)# 
+numAges <- c(10, 10, 12) #
+
+sexs <- c("female", "male", "all")
+
+# Loop through each item and clean up the data
+for (ii in seq(along = items)) {
+  # Specify item
+  tempItem <- items[ii]
+  
+  # Specify folder
+  tempFolder <- file.path(mbsFolder, toString(tempItem))
+  
+  # Initialize data frame for storage
+  tempDf <- data.frame(year = integer(), sex = character(), age = character(),
+                       nsw = integer(), vic = integer(), qld = integer(), 
+                       sa = integer(), wa = integer(), tas = integer(),
+                       act = integer(), nt = integer(), all = integer())
+  
+  # Loop through years and extract data
+  for (jj in startyear:endyear) {
+    # Load file 
+    tempData <- read_excel(file.path(tempFolder,
+                                     paste(mbsFile, toString(tempItem), "-", 
+                                           toString(jj), ".xls", sep = "")),
+                           skip = skipRows[ii],
+                           col_types = c("text", "text", "numeric", "numeric",
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric",
+                                        "numeric"))
+    
+    # Delete unnecesary rows
+    tempData <- tempData[1:extractRows[ii],]
+    
+    # Change column names
+    colnames(tempData) <- c("sex","age",states)
+    
+    # Fill in missing sex values
+    for (kk in 1:3) {
+       tempData[((kk-1)*numAges[ii]+1):(kk*numAges[ii]),]$sex <- sexs[kk]
+    } 
+    
+    # Clean up age groups
+    tempData$age <- tolower(tempData$age)
+    tempData[tempData$age == "total",]$age <- "all"
+    
+    # For item 71139 fix 5-14 age group
+    if (tempItem == 71139) {
+      tempData[c(2,14,26),]$age <- as.character("5-14")
+      # Annoyingly excel may still show this as "May-14" but read.csv 
+      # reads in the correct value
+    }
+    
+    # Add year and reorder
+    tempData$year <- jj
+    tempData <- select(tempData, year, everything())
+    
+    # Bind each years data 
+    tempDf <- rbind(tempDf,tempData)
+    
+    
+  } 
+  
+  # Write final data frame to file
+  write.csv(tempDf, file = file.path(cleanDataFolder, 
+                                       paste(mbsFile, toString(tempItem), 
+                                             "-clean.csv", sep = "")), row.names = FALSE)
+}
+
+```
+
