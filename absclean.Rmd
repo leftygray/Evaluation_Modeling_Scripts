@@ -18,7 +18,7 @@ require(tidyr)
 require(utils)
 
 # Key folder paths
-basePath <- file.path(path.expand("~"),"Research","!Evaluation_Modelling")
+basePath <- file.path(path.expand("~"),"Documents", "Research","!Evaluation_Modelling")
 absFolder <- file.path(basePath,"data","ABS") # Folder with the raw ABS data
 # dataPath <- file.path(basePath,"data","raw")
 cleanDataFolder <- file.path(basePath,"data")
@@ -30,11 +30,11 @@ setwd(file.path(basePath,"code"))
 states <- c("nsw","vic","qld","sa","wa","tas","nt","act","all")
 
 # Primary script parameters
-# dataYear <- 2013
+dataYear <- 2014
 
 ```
 
-## Proportion of people who leave Australia
+## Proportion of people who leave Australia - NOM
 
 The final R chuck extracts net overseas migration and estimated resident 
 popultion data. It is primarily used to estimate the proportion of the 
@@ -119,6 +119,48 @@ migrationData <- inner_join(erpdata,nomdata,by=c("year","state"))
 
 # Save the final cleaned data set 
 write.csv(migrationData, file = file.path(cleanDataFolder, "ABS_migration_clean.csv"), row.names = FALSE)
+
+```
+
+## Proportion of people who leave Australia - permantly 
+
+```{r permanentMigration}
+# This script cleans the ABS data into the format we want. The raw data is 
+# always on the second sheet of the .xls data file.
+
+### National ERP data
+
+nationalERP <- filter(erpdata, state == "all") %>%
+  select(-state)
+
+### Process departure data - Read in second sheet skipping most of the bumph
+departData <- read_excel(file.path(absFolder,"340102-ABS_Overseas_Departures.xls"),
+                      sheet = 2, skip = 9)
+
+# Delete unnecessary columns (keeping the first two) 
+departData <- departData[,c(1,2)]
+
+# Convert first column to years 
+departData[,1] <- format(departData[,1],"%Y")
+
+# Rename columns
+colnames(departData) <- c("year","departures")
+
+# Group by year and sum to get total for each year
+departData <- departData %>%
+  group_by(year) %>%
+  summarise(departures = sum(departures)) # %>%
+#   filter(year >= 1981 & year <= dataYear)
+
+# Convert to correct data types
+departData$year <- as.numeric(departData$year)
+
+# Merge with ERP data
+departData <- inner_join(nationalERP, departData, by = "year")
+
+
+# Save the final cleaned data set 
+write.csv(departData, file = file.path(cleanDataFolder, "ABS_departures_clean.csv"), row.names = FALSE)
 
 ```
 
