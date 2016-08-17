@@ -3,9 +3,13 @@ ABS data cleaning
   
 This script is used to load and clean raw demographic data from the 
 Australian Burea of Statistica (ABS). These data are primarily used for 
-care cascade calculations but can be useful for Australian evaluation models
-in general. The resulting cleaned data sets are saved as dataframes in csv 
-files in the ~/Evaluation\_Modelling/data/ folder. 
+care cascade calculations but can be useful for Australian evaluation
+models in general. The original raw data sets are stored 
+in the ~/Evaluation\_Modelling/data/ABS/ folder. The resulting cleaned
+data sets are saved as dataframes in csv files in the
+~/Evaluation\_Modelling/data/ folder. A description of the ABS data sets 
+and the resulting definitions are provided in a README.md file in 
+the ~/Evaluation\_Modelling/data/ABS/ folder.
 
 ```{r initialization}
 # Clear workspace
@@ -18,10 +22,14 @@ require(tidyr)
 require(utils)
 
 # Key folder paths
-basePath <- file.path(path.expand("~"),"Documents", "Research","!Evaluation_Modelling")
-absFolder <- file.path(basePath,"data","ABS") # Folder with the raw ABS data
-# dataPath <- file.path(basePath,"data","raw")
+Rpath <- file.path(path.expand("~"), "R") 
+basePath <- file.path(path.expand("~"), "Research",
+                      "!Evaluation_Modelling")
+absFolder <- file.path(basePath,"data","ABS") # Folder with raw ABS data
 cleanDataFolder <- file.path(basePath,"data")
+
+# Source useful functions
+source(file.path(Rpath, "TidyLongitudinal.R"), echo=TRUE)
 
 # Set working directory
 setwd(file.path(basePath,"code"))
@@ -30,13 +38,13 @@ setwd(file.path(basePath,"code"))
 states <- c("nsw","vic","qld","sa","wa","tas","nt","act","all")
 
 # Primary script parameters
-dataYear <- 2014
+dataYear <- 2015
 
 ```
 
 ## Proportion of people who leave Australia - NOM
 
-The final R chuck extracts net overseas migration and estimated resident 
+The first R chuck extracts net overseas migration and estimated resident 
 popultion data. It is primarily used to estimate the proportion of the 
 which moves overseas each year population 
 
@@ -90,7 +98,7 @@ nomdata <- data.frame(year = as.numeric(),
 for (ii in seq(along=years)+1) {
   
   # Read in sheet from file
-  tempdata <- read_excel(file.path(absFolder,"34120do007_201314-ABS_Migration_NOM.xls"),
+  tempdata <- read_excel(file.path(absFolder,"129do007_201314-ABS_Migration_NOM.xls"),
                          sheet = ii, skip = 5)
   
   # Replace annoying column names
@@ -125,7 +133,7 @@ write.csv(migrationData, file = file.path(cleanDataFolder, "ABS_migration_clean.
 ## Proportion of people who leave Australia - permantly 
 
 ```{r permanentMigration}
-# This script cleans the ABS data into the format we want. The raw data is 
+# This script cleans the ABS data into the format we want. The raw data is
 # always on the second sheet of the .xls data file.
 
 ### National ERP data
@@ -264,3 +272,41 @@ erpasdata$year <- as.numeric(erpasdata$year)
 write.csv(erpasdata, file = file.path(cleanDataFolder, "ABS_ERP_sex_age_clean.csv"), row.names = FALSE)
 
 ```
+
+## Estimated age-specific death rates
+
+This R chuck cleans the ABS age-specific death rate data for males and 
+females. This is used for estimating the proportion of PLDHIV in each five
+year age bin. 
+
+```{r deathrates}
+
+### Process death rates for sex and age from second and third sheets
+deathData <- read_excel(file.path(absFolder,"4125-ABS_Gender_Indicators.xls"),
+                      sheet = 14, skip = 14)
+
+# Clean up data
+years <- 2000:2011
+deathData <- deathData[1:19,]
+colnames(deathData) <- c("age", paste(c("males", "females"), 
+                                      as.character(rep(years, each = 2)), sep = ""))
+deathData[1, 1] <- "0"
+deathData[nrow(deathData), 1] <- "85+"
+
+# Reshape data
+deathData <- gather(deathData, "pop", "deathrate", 2:ncol(deathData))
+deathData$pop <- as.character(deathData$pop)
+
+# Split pop column into gender and year and reorder columns
+splitPop <- strsplit(deathData$pop, "s")
+deathData$sex <- unlist(lapply(splitPop, function(x) x[1]))
+deathData$year <- as.numeric(unlist(lapply(splitPop, function(x) x[2])))
+deathData <- deathData %>%
+  select(-pop) %>%                 # remove pop
+  select(-deathrate, everything()) # put deathrate at end
+
+# Save the final cleaned data set 
+write.csv(deathData, file = file.path(cleanDataFolder, "ABS_deathrate_sex_age.csv"), row.names = FALSE)
+
+```
+
