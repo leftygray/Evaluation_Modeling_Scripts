@@ -1,0 +1,145 @@
+---
+title: "HIV Cascade Notifications Data"
+author: "Richard T. Gray"
+date: "Wednesday, July 03, 2015"
+output:
+  word_document:
+    highlight: espresso
+---
+
+This R Markdown script is used to process raw HIV notifications files 
+produced by the Surveillance, Evaluation Research Program at the Kirby 
+Institute, Faculty of Medicine, UNSW. This processing is to produce a 
+de-identified data file (in CSV format) with only the necessary categories 
+for evaluation purposes.
+
+Raw notifications files MUST remain in the working directory of this 
+script. The processed and cleaned files, however, can be copied by Kirby 
+staff for further processing.  
+
+This document is written in dynamic format using R markdown v2 within R 
+studio 0.98.1091 (using `r substr(R.Version()$version.string,1,15)`). To 
+reproduce the cleaned file the user needs to specify the year of the 
+notifications data for processing and run this script in Rstudio. As the 
+raw notifications data is stored as a Stata .dta data file (currently 
+produced by Stata Version 12) users need the 'foreign' R package installed 
+to load the file (For Stata 13 the 'haven' R package should be installed 
+instead). The final CSV data file is processed using the dplyr library.
+
+To produce a Word document description of this script requires the  the 
+installation of the R Markdown v2, knitr, and pandoc packages. <!--- To 
+produce the Word Document requires saving in a local directory and setting 
+eval = FALSE in the loaddata chunk ---> 
+
+
+### Script Setup
+
+The following code gets things set up for processing and loads the required
+libraries.
+
+```{r setup, message = FALSE, tidy = TRUE}
+# Clear workspace
+rm(list=ls()) 
+
+# Set working directory
+setwd(file.path("/","SVR-NAS","Public","SERP","Cascades","HIV"))
+
+# Load libraries for data manipulation - they are installed if not already
+# done so
+
+if (!require(foreign)) {    
+  # Try to install package
+  install.packages("foreign")
+  
+  # Try to reload package
+  if (!require(foreign)) {
+    stop("could not install foreign")
+    }
+  }
+
+```
+
+### User specified year for processing
+
+The user needs to specify the HIV notifications year. This year is used to 
+specify the input and output files. 
+
+```{r User specifications, tidy = TRUE}
+
+# User specified year
+yearAnalysis <- 2014
+
+```
+
+
+```{r files, tidy = TRUE}
+# Raw notifications data - MUST REMAIN PRIVATE
+rawDataFile <- file.path(getwd(),"data", "National Registry Data",   
+                      paste("rawHIVnotifications-",toString(yearAnalysis), 
+                               ".dta",sep = ""))
+
+# De-identified output file name
+cleanDataFile <- file.path(getwd(),"data",
+                           paste("cascadeHIVnotifications-",
+                                 toString(yearAnalysis),".csv",
+                                                 sep = ""))
+
+cleanDataFileBP <- file.path(getwd(),"data",
+                             paste("backprojectionHIVnotifications-",                                                 toString(yearAnalysis),".csv",
+                                                 sep = ""))
+
+```
+
+### Load and process the raw HIV notifications file
+
+The raw DTA file is loaded into the work space and the following 
+key identifying variables are removed:
+
+* nathivno
+* famname
+* givename  
+
+The variables required for evaluation modelling are then extracted and 
+saved in a de-identified CSV file. <!--- To get the Word Document you need 
+to set eval = FALSE in each chunk --->
+
+```{r loaddata, tidy = TRUE} 
+#eval = FALSE when running R markdown
+
+# Load the raw data file
+rawData <- read.dta(rawDataFile)
+
+# Select the variables required and create processed data
+vars <- c("state", "sex", "dob", "cob", "rob", "datehiv", "age_hiv", 
+          "dateaids", "cd4count", "expcode", "partnercob", "dateneg",
+          "dateindet", "dateill", "datedeath",
+          "causeofdeath", "previ_diag_overseas",
+          "country_prev_diag", "cd4_date", "yearhiv", "aborig")
+  
+processData <- rawData[,vars]
+
+# Save processed data
+write.csv(processData, file = cleanDataFile, row.names = FALSE)
+
+### Back projection file 
+
+# Select the variables we need for back projection
+varsBP <- c("postcode", "sex", "dob", "cob", "datehiv", "dateaids",
+            "cd4count", "expcode", "dateneg", "dateill", 
+            "dateindet", "previ_diag_overseas") 
+  
+processDataBP <- rawData[,varsBP]
+
+# Save back projection data
+write.csv(processDataBP, file = cleanDataFileBP, row.names = FALSE)
+
+```
+
+### Clean-up 
+
+Finally clean up work space so nothing is accidentally saved in the wrong place.
+
+```{r cleanup, tidy = TRUE}
+# Clear workspace
+rm(list=ls())
+```
