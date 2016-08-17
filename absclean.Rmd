@@ -8,8 +8,7 @@ models in general. The original raw data sets are stored
 in the ~/Evaluation\_Modelling/data/ABS/ folder. The resulting cleaned
 data sets are saved as dataframes in csv files in the
 ~/Evaluation\_Modelling/data/ folder. A description of the ABS data sets 
-and the resulting definitions are provided in a README.md file in 
-the ~/Evaluation\_Modelling/data/ABS/ folder.
+and important data definitions are provided in each section. 
 
 ```{r initialization}
 # Clear workspace
@@ -38,8 +37,45 @@ setwd(file.path(basePath,"code"))
 states <- c("nsw","vic","qld","sa","wa","tas","nt","act","all")
 
 # Primary script parameters
-dataYear <- 2015
+dataYear <- 2014
 
+```
+
+## Estimated resident population
+
+```{r ERP}
+# Process ERP data for each jurisdiction and overall
+
+# Read in second sheet skipping most of the bumph
+erpData <- read_excel(file.path(absFolder, 
+  paste0("310104-ABS_ERP_State_Overall-", toString(dataYear), ".xlsx")),
+  sheet = 2, skip = 9)
+
+# Delete unnecessary columns (keeping the last nine) 
+ncolumns <- ncol(erpData)
+erpData <- erpData[, c(1, 20:ncolumns)]
+
+# Convert first column to years 
+erpData[, 1] <- format(erpData[, 1], "%Y")
+
+# Rename columns
+colnames(erpData) <- c("year", states)
+
+# Remove unnecessary rows (keeping the final quarter data for each year)
+# Starts in second quarter 1981 so selected ever third row. Then organize
+# into long format with correct data types.
+nrows <- nrow(erpData)
+erpData <- erpData %>%
+  slice(seq(3, nrows, by = 4)) %>%
+  gather(state, erp, 2:10) %>%
+  arrange(year) %>%
+  mutate(year = as.numeric(year),
+         state = as.character(state))
+
+# Save the final cleaned data set 
+write.csv(erpData, file = file.path(cleanDataFolder, 
+  paste0("ABS_ERP_clean-", toString(dataYear) ,".csv")), 
+  row.names = FALSE)
 ```
 
 ## Proportion of people who leave Australia - NOM
@@ -48,38 +84,11 @@ The first R chuck extracts net overseas migration and estimated resident
 popultion data. It is primarily used to estimate the proportion of the 
 which moves overseas each year population 
 
-```{r migration}
+```{r NOM}
 # This script cleans the ABS data into the format we want. The raw data is 
 # always on the second sheet of the .xls data file.
 
-### Process ERP data
 
-# Read in second sheet skipping most of the bumph
-erpdata <- read_excel(file.path(absFolder,"310104-ABS_ERP_State_Overall.xls"),
-                      sheet = 2, skip = 9)
-
-# Delete unnecessary columns (keeping the last nine) 
-ncolumns <- ncol(erpdata)
-erpdata <- erpdata[,c(1,20:28)]
-
-# Convert first column to years 
-erpdata[,1] <- format(erpdata[,1],"%Y")
-
-# Rename columns
-colnames(erpdata) <- c("year",states)
-
-# Remove unnecessary rows (keeping the final quarter data for each year)
-# Starts in second quarter 1981 so selected ever third row
-nrows <- nrow(erpdata)
-erpdata <- slice(erpdata,seq(3,135,by = 4))
-
-# Reshape into long format
-erpdata <- gather(erpdata,state,erp,2:10)
-erpdata <- arrange(erpdata,year)
-
-# Convert to correct data types
-erpdata$year <- as.numeric(erpdata$year)
-erpdata$state <- as.character(erpdata$state)
 
 ### Process departure data - Have to read in 9 sheets
 
@@ -130,35 +139,54 @@ write.csv(migrationData, file = file.path(cleanDataFolder, "ABS_migration_clean.
 
 ```
 
-## Proportion of people who leave Australia - permantly 
+## Proportion of people who depart Australia - permantly or for more than
+a year 
 
-```{r permanentMigration}
+**Data:** ABS series 340102
+**File:** 340102-ABS_Overseas_Departures-(dataYear).xls
+**Definitions:**
+- Permanent departures: Australian residents (including former settlers)
+who on departure state on their passenger card that they are departing 
+permanently.
+- Long-term resident departures (LTRD): Australian residents who state
+that they intend to stay abroad for 12 months or more (but not
+permanently).
+- Long-term visitor departures (LTVD): Overseas visitors departing after a
+recorded stay of 12 months or more in Australia. 
+
+Note: dataYear in the file refers to the last complete year in the data
+
+```{r Departures}
 # This script cleans the ABS data into the format we want. The raw data is
 # always on the second sheet of the .xls data file.
 
-### National ERP data
+# National ERP data ------------------------------------------------------
 
 nationalERP <- filter(erpdata, state == "all") %>%
   select(-state)
 
-### Process departure data - Read in second sheet skipping most of the bumph
-departData <- read_excel(file.path(absFolder,"340102-ABS_Overseas_Departures.xls"),
+# Process departure data -------------------------------------------------
+# Read in second sheet skipping most of the bumph
+departData <- read_excel(file.path(absFolder,
+  paste0("340102-ABS_Overseas_Departures-", toString(dataYear), ".xls")),
                       sheet = 2, skip = 9)
 
-# Delete unnecessary columns (keeping the first two) 
-departData <- departData[,c(1,2)]
+# Delete unnecessary columns (keeping the first 4; quarter, permanent,
+# long-term resident, long-term visitor) 
+departData <- departData[, c(1, 4)]
 
 # Convert first column to years 
 departData[,1] <- format(departData[,1],"%Y")
 
 # Rename columns
-colnames(departData) <- c("year","departures")
+colnames(departData) <- c("year","permanent", "resident", "visitor")
 
 # Group by year and sum to get total for each year
 departData <- departData %>%
   group_by(year) %>%
-  summarise(departures = sum(departures)) # %>%
-#   filter(year >= 1981 & year <= dataYear)
+  summarise(permanent = sum(permanent),
+            resident = sum(resident),
+            visitor = sum(visitor))
 
 # Convert to correct data types
 departData$year <- as.numeric(departData$year)
@@ -166,9 +194,9 @@ departData$year <- as.numeric(departData$year)
 # Merge with ERP data
 departData <- inner_join(nationalERP, departData, by = "year")
 
-
 # Save the final cleaned data set 
-write.csv(departData, file = file.path(cleanDataFolder, "ABS_departures_clean.csv"), row.names = FALSE)
+write.csv(departData, file = file.path(cleanDataFolder,
+  "ABS_departures_clean.csv"), row.names = FALSE)
 
 ```
 
