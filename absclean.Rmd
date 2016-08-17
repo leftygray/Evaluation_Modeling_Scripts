@@ -37,7 +37,7 @@ setwd(file.path(basePath,"code"))
 states <- c("nsw","vic","qld","sa","wa","tas","nt","act","all")
 
 # Primary script parameters
-dataYear <- 2014
+dataYear <- 2015
 
 ```
 
@@ -162,10 +162,11 @@ Note: dataYear in the file refers to the last complete year in the data
 
 # National ERP data ------------------------------------------------------
 
-nationalERP <- filter(erpdata, state == "all") %>%
+nationalERP <- filter(erpData, state == "all") %>%
   select(-state)
 
 # Process departure data -------------------------------------------------
+
 # Read in second sheet skipping most of the bumph
 departData <- read_excel(file.path(absFolder,
   paste0("340102-ABS_Overseas_Departures-", toString(dataYear), ".xls")),
@@ -173,30 +174,32 @@ departData <- read_excel(file.path(absFolder,
 
 # Delete unnecessary columns (keeping the first 4; quarter, permanent,
 # long-term resident, long-term visitor) 
-departData <- departData[, c(1, 4)]
+departData <- departData[, c(1:4)]
 
 # Convert first column to years 
-departData[,1] <- format(departData[,1],"%Y")
+departData[,1] <- format(departData[, 1], "%Y")
 
 # Rename columns
-colnames(departData) <- c("year","permanent", "resident", "visitor")
+colnames(departData) <- c("year", "permanent", "resident", "visitor")
 
 # Group by year and sum to get total for each year
 departData <- departData %>%
   group_by(year) %>%
   summarise(permanent = sum(permanent),
             resident = sum(resident),
-            visitor = sum(visitor))
-
-# Convert to correct data types
-departData$year <- as.numeric(departData$year)
-
-# Merge with ERP data
-departData <- inner_join(nationalERP, departData, by = "year")
+            visitor = sum(visitor)) %>%
+  mutate(year = as.numeric(year)) %>%  # Convert to correct data type
+  ungroup() %>%
+  inner_join(nationalERP, ., by = "year") %>% # Add overall ERP
+  mutate(rate_permanent = permanent / erp, # Calculate departure rates
+         rate_resident = resident / erp,
+         rate_vistor = visitor / erp,
+         overall_rate = (permanent + resident + visitor) / erp) 
 
 # Save the final cleaned data set 
 write.csv(departData, file = file.path(cleanDataFolder,
-  "ABS_departures_clean.csv"), row.names = FALSE)
+  paste0("ABS_departures_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
 
 ```
 
