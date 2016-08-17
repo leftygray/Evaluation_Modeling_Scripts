@@ -78,67 +78,6 @@ write.csv(erpData, file = file.path(cleanDataFolder,
   row.names = FALSE)
 ```
 
-## Proportion of people who leave Australia - NOM
-
-The first R chuck extracts net overseas migration and estimated resident 
-popultion data. It is primarily used to estimate the proportion of the 
-which moves overseas each year population 
-
-```{r NOM}
-# This script cleans the ABS data into the format we want. The raw data is 
-# always on the second sheet of the .xls data file.
-
-
-
-### Process departure data - Have to read in 9 sheets
-
-# Need to specify years first
-years <- 2004:2012
-
-# Initilize results data frame
-nomdata <- data.frame(year = as.numeric(),
-                      state = as.numeric(),
-                      arrivales = as.numeric(),
-                      departures = as.numeric(),
-                      nom = as.numeric()
-)
-
-# Loop through sheets extracting data we want
-for (ii in seq(along=years)+1) {
-  
-  # Read in sheet from file
-  tempdata <- read_excel(file.path(absFolder,"129do007_201314-ABS_Migration_NOM.xls"),
-                         sheet = ii, skip = 5)
-  
-  # Replace annoying column names
-  colnames(tempdata) <- c("state","grouping","category","arrivals","departures","nom")
-  
-  # Select the data we want
-  tempdata <- tempdata %>%
-    select(-category) %>%
-    filter(grouping == "Total")
-  
-  # General tiding up and add year of data to front
-  tempdata$state <- states
-  tempdata <- select(tempdata,-grouping) 
-  tempdata$year <- rep(years[ii-1],nrow(tempdata)) 
-  tempdata <- select(tempdata,year,everything())  # Put year first
-  
-  # Append to final results
-  nomdata <- rbind(nomdata,tempdata)
-}
-
-# Order nomdata by state
-nomdata <- arrange(nomdata,year)
-
-# Join th nomdata and erpdata sets. 
-migrationData <- inner_join(erpdata,nomdata,by=c("year","state"))
-
-# Save the final cleaned data set 
-write.csv(migrationData, file = file.path(cleanDataFolder, "ABS_migration_clean.csv"), row.names = FALSE)
-
-```
-
 ## Proportion of people who depart Australia - permantly or for more than
 a year 
 
@@ -165,7 +104,7 @@ Note: dataYear in the file refers to the last complete year in the data
 nationalERP <- filter(erpData, state == "all") %>%
   select(-state)
 
-# Process departure data -------------------------------------------------
+# Process overall departure data -----------------------------------------
 
 # Read in second sheet skipping most of the bumph
 departData <- read_excel(file.path(absFolder,
@@ -191,7 +130,8 @@ departData <- departData %>%
   mutate(year = as.numeric(year)) %>%  # Convert to correct data type
   ungroup() %>%
   inner_join(nationalERP, ., by = "year") %>% # Add overall ERP
-  mutate(rate_permanent = permanent / erp, # Calculate departure rates
+  mutate(overall = permanent + resident + visitor,
+         rate_permanent = permanent / erp, # Calculate departure rates
          rate_resident = resident / erp,
          rate_vistor = visitor / erp,
          overall_rate = (permanent + resident + visitor) / erp) 
@@ -202,6 +142,94 @@ write.csv(departData, file = file.path(cleanDataFolder,
   row.names = FALSE)
 
 ```
+
+## Proportion of people who leave Australia by state and territory
+
+The following chunk is used to estimate the number of people 
+leaving Australia by state using the NOM departures estimate.
+
+**Data:** ABS series 3412
+**File:** 34120do007-ABS_Migration_NOM-(dataYear).xls
+**ABS Explanatory notes:** 
+http://www.abs.gov.au/ausstats/abs@.nsf/exnote/3412.0
+
+NET OVERSEAS MIGRATION (NOM)
+
+According to recommendations of the United Nations an international 
+migrant is defined as "any person who changes his or her country of usual 
+residence" (United Nations 1998). For the purposes of estimating NOM, and 
+thereby Australia's official ERP counts, a person is regarded as a usual 
+resident if they have been (or expect to be) residing in Australia for a 
+period of 12 months or more over a 16 month period. As such, NOM and ERP 
+estimates include all people, regardless of nationality, citizenship or 
+legal status, who usually live in Australia, with the exception of foreign
+diplomatic personnel and their families.
+
+Conceptually, the term NOM is based on an international traveller's 
+duration of stay being in or out of Australia for 12 months or more. It is
+the difference between the number of incoming travellers who stay in 
+Australia for 12 months or more and are added to the population (NOM 
+arrivals) and the number of outgoing travellers who leave Australia for 12
+months or more and are subtracted from the population (NOM departures). 
+With the introduction of the improved methods for estimating NOM, this 12 
+month period does not have to be continuous and is measured over a 
+16-month reference period. Therefore, whether a traveller is in or out of 
+the population is determined by their exact duration of stay in or away 
+from Australia over the subsequent 16 months after arrival or departure.
+
+Note: dataYear in the file refers to the ABS year end but the data is 
+two years behind. First year is always 2004. 
+
+```{r NOM}
+# Process NOM departure data - Have to read in separate sheets
+
+# Need to specify years first
+years <- 2004:(dataYear-2)
+
+# Initilize results data frame
+nomData <- data.frame(year = as.numeric(),
+                      state = as.numeric(),
+                      arrivales = as.numeric(),
+                      departures = as.numeric(),
+                      nom = as.numeric())
+
+# Loop through sheets extracting data we want
+for (ii in seq(along = years) + 1) {
+  
+  # Read in sheet from file
+  tempData <- read_excel(file.path(absFolder,                                  paste0("34120do007-ABS_Migration_NOM-", toString(dataYear) ,".xls")),
+                         sheet = ii, skip = 5)
+  
+  # Replace annoying column names
+  colnames(tempData) <- c("state", "grouping", "category", "arrivals",
+                          "departures", "nom")
+  
+  # Select the data we want and do some general tidying up
+  tempData <- tempData %>%
+    select(-category) %>%
+    filter(grouping == "Total") %>%
+    mutate(state = states,
+           year = rep(years[ii-1], length(states))) %>%
+    select(-grouping, year, everything())
+  
+  # Append to final results
+  nomData <- rbind(nomData, tempData)
+}
+
+# Order nomdata by state and add erpData and an overall departure rate
+nomData <- arrange(nomData, year) %>%
+  select(year, everything()) %>%
+  inner_join(erpData, ., by = c("year", "state")) %>%
+  mutate(depart_rate = departures / erp)
+
+# Save the final cleaned data set 
+write.csv(nomData, file = file.path(cleanDataFolder,
+  paste0("ABS_migration_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+```
+
+
 
 ## Proportion of people who move interstate
 
