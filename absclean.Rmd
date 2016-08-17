@@ -335,13 +335,24 @@ write.csv(erpasData, file = file.path(cleanDataFolder,
 ## Estimated death rates
 
 ```{r Overall deathrate}
+# Overall death rate data is available from 1971 to 2014 by single year
+# age. Only extract overall here.
+deathDataAll <- read_excel(file.path(absFolder,
+  paste0("33020-ABS_Overall_Death_Rates-1971_2014.xls")), skip = 6) %>%
+  slice(2) %>%
+  select(-Time) %>%
+  gather("year", "deathrate")
+
+# Save the final cleaned data set 
+write.csv(deathData, file = file.path(cleanDataFolder,
+  "ABS_Deathrate_All_clean-2014.csv"), 
+  row.names = FALSE)
 
 ```
 
 This R chuck cleans the ABS age-specific death rate data for males and 
 females. This is used for estimating the proportion of PLDHIV in each five
 year age bin. 
-
 
 ```{r deathrates}
 # Currently date is only available up to 2014. Need to loop through each 
@@ -430,7 +441,7 @@ for (ii in 2:(length(states) + 1)) {
 deathData[deathData$age == "85 and over", ]$age <- "85+"
 
 # Save the final cleaned data set 
-write.csv(erpasData, file = file.path(cleanDataFolder,
+write.csv(deathData, file = file.path(cleanDataFolder,
   "ABS_Deathrate_Age_State_clean-2014.csv"), 
   row.names = FALSE)
 
