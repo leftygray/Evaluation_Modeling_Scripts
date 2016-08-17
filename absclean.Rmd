@@ -229,143 +229,210 @@ write.csv(nomData, file = file.path(cleanDataFolder,
 
 ```
 
-
-
 ## Proportion of people who move interstate
 
 ```{r interstate}
 
-### Process arrivals read in second sheet
-arrdata <- read_excel(file.path(absFolder,"3101016a-ABS_Interstate_Arrivals.xls"),
-                      sheet = 2, skip = 9)
+# Process arrivals read in second sheet ----------------------------------
+arrData <- read_excel(file.path(absFolder,
+  paste0("3101016a-ABS_Interstate_Arrivals-", 
+         toString(dataYear), ".xls")), sheet = 2, skip = 9)
 
 # Convert first column to years 
-arrdata[,1] <- format(arrdata[,1],"%Y")
+arrData[,1] <- format(arrData[,1],"%Y")
 
 # Convert colnames
-colnames(arrdata) <- c("year",states)
+colnames(arrData) <- c("year",states)
 
 # Remove first three rows as they form an incomplete year
-nrows <- nrow(arrdata)
-arrdata <- arrdata[4:nrows,]
+nrows <- nrow(arrData)
+arrData <- arrData[4:nrows,]
 
 # Sum the year data cumulative and then slice to select every fourth row 
 # (corresponding to total for the year)
 
 # First gather into long format
-arrdata <- gather(arrdata, state,qtr_arrivals,2:10) 
-
-# Now do the processing
-arrdata <- arrdata %>%
+arrData <- arrData %>%
+  gather(state, qtr_arrivals, 2:10) %>%
   group_by(year,state) %>%
   mutate(arrivals = cumsum(qtr_arrivals)) %>%
   ungroup() %>%
-  slice(seq(4,1188, by =4)) %>%
+  slice(seq(4, 1188, by =4)) %>%
   select(-qtr_arrivals)
  
-
-### Process departures
-depdata <- read_excel(file.path(absFolder,"3101016b-ABS_Interstate_Departures.xls"),
-                      sheet = 2, skip = 9)
+# Process departures -----------------------------------------------------
+depData <- read_excel(file.path(absFolder,
+  paste0("3101016b-ABS_Interstate_Departures-", 
+         toString(dataYear), ".xls")), sheet = 2, skip = 9)
 
 # Convert first column to years 
-depdata[,1] <- format(depdata[,1],"%Y")
+depData[,1] <- format(depData[,1],"%Y")
 
 # Convert colnames
-colnames(depdata) <- c("year",states)
+colnames(depData) <- c("year",states)
 
 # Remove first three rows as they form an incomplete year
-nrows <- nrow(depdata)
-depdata <- depdata[4:nrows,]
+nrows <- nrow(depData)
+depData <- depData[4:nrows,]
 
 # Sum the year data cumulative and then slice to select every fourth row 
 # (corresponding to total for the year)
 
 # First gather into long format
-depdata <- gather(depdata, state,qtr_departures,2:10) 
-
-# Now do the processing
-depdata <- depdata %>%
-  group_by(year,state) %>%
+depData <- depData %>%
+  gather(state, qtr_departures, 2:10) %>%
+  group_by(year, state) %>%
   mutate(departures = cumsum(qtr_departures)) %>%
   ungroup() %>%
-  slice(seq(4,1188, by =4)) %>%
+  slice(seq(4, 1188, by =4)) %>%
   select(-qtr_departures)
 
 # Join the arrivals and departures data frames
-interstateData <- inner_join(arrdata,depdata,by=c("year","state"))
+interstateData <- inner_join(arrData,depData, by=c("year", "state"))
 
 # Save the final cleaned data set 
-write.csv(interstateData, file = file.path(cleanDataFolder, "ABS_interstate_clean.csv"), row.names = FALSE)
+write.csv(interstateData, file = file.path(cleanDataFolder,
+  paste0("ABS_interstate_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
 
 ```
 
 ## Estimated resident population for each age and sex
 
-This R chuck cleans the ERP data by sex ang age provided by the ABS. It is 
+This R chuck cleans the ERP data by sex and age provided by the ABS. It is
 currently used in the Chlamydia incidence model. 
 
-```{r grouppop}
+```{r group ERP}
+# Process ERP for sex and age from second and third sheets
 
-### Process ERP for sex and age from second and third sheets
-erpdata1 <- read_excel(file.path(absFolder,"3101059-ABS_ERP_Age_Sex.xls"),
-                      sheet = 2, skip = 9)
+dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
+                                        toString(dataYear), ".xls"))
 
-erpdata2 <- read_excel(file.path(absFolder,"3101059-ABS_ERP_Age_Sex.xls"),
-                      sheet = 3, skip = 9)
+erpData1 <- read_excel(dataFile, sheet = 2, skip = 9)
+
+erpData2 <- read_excel(dataFile, sheet = 3, skip = 9)
 
 # Combine data frames
-erpasdata <- cbind(erpdata1,erpdata2[,2:ncol(erpdata2)])
+erpasData <- cbind(erpData1, erpData2[, 2:ncol(erpData2)])
 
 # Setup column names - 101 ages for males, females and all
 ages <- as.character(0:100)
-colnames(erpasdata) <- c("year",paste("males-",ages,sep = ""),
-                         paste("females-",ages,sep = ""),
-                         paste("all-",ages,sep = ""))
-
+colnames(erpasData) <- c("year", paste("males-", ages, sep = ""),
+                         paste("females-", ages, sep = ""),
+                         paste("all-", ages, sep = ""))
+ 
 # Convert first column to years 
-erpasdata[,1] <- format(erpasdata[,1],"%Y")
-erpasdata$year <- as.numeric(erpasdata$year)
+erpasData[, 1] <- format(erpasData[, 1],"%Y")
+erpasData$year <- as.numeric(erpasData$year)
 
 # Save the final cleaned data set 
-write.csv(erpasdata, file = file.path(cleanDataFolder, "ABS_ERP_sex_age_clean.csv"), row.names = FALSE)
+write.csv(erpasData, file = file.path(cleanDataFolder,
+  paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
 
 ```
 
-## Estimated age-specific death rates
+## Estimated death rates
+
+```{r Overall deathrate}
+
+```
 
 This R chuck cleans the ABS age-specific death rate data for males and 
 females. This is used for estimating the proportion of PLDHIV in each five
 year age bin. 
 
+
 ```{r deathrates}
+# Currently date is only available up to 2014. Need to loop through each 
+# sheet to get data for each state. Crude death rate per 1000 is converted
+# to a proportion. 
 
-### Process death rates for sex and age from second and third sheets
-deathData <- read_excel(file.path(absFolder,"4125-ABS_Gender_Indicators.xls"),
-                      sheet = 14, skip = 14)
+# Need to specify years first
+years <- 2004:2014
 
-# Clean up data
-years <- 2000:2011
-deathData <- deathData[1:19,]
-colnames(deathData) <- c("age", paste(c("males", "females"), 
-                                      as.character(rep(years, each = 2)), sep = ""))
-deathData[1, 1] <- "0"
-deathData[nrow(deathData), 1] <- "85+"
+# Initilize results data frame
+deathData <- data.frame(year = as.numeric(),
+                      state = as.character(),
+                      age = as.character(),
+                      gender = as.character(),
+                      deathrate = as.numeric())
 
-# Reshape data
-deathData <- gather(deathData, "pop", "deathrate", 2:ncol(deathData))
-deathData$pop <- as.character(deathData$pop)
+# Loop through sheets extracting data we want
+for (ii in 2:(length(states) + 1)) {
+  
+  # Read in sheet from file
+  tempData <- read_excel(file.path(absFolder,           
+      "33020do002_ABS_Deathrate_2014.xls"), sheet = ii, skip = 4)
+  
+  # Extract the overall deathrates ---------------------------------------
+  tempDataAll <- tempData %>%
+    slice(8:10) %>%
+    mutate(state = states[ii - 1]) %>%
+    select(state, everything())
+  
+  # Rename columns
+  colnames(tempDataAll) <- c("state", "population", as.character(years))
+  
+  # Reorganize
+  tempDataAll <- tempDataAll %>%
+    gather("year", "deathrate", 3:ncol(tempDataAll)) %>%
+    mutate(year = as.numeric(year)) %>%
+    mutate(age = "all",
+           gender = tolower(population),
+           deathrate = as.numeric(deathrate)) %>%
+    select(year, state, age, gender, deathrate)
+  
+  # Replae persons with all
+  tempDataAll[tempDataAll$gender == "persons", ]$gender <- "all"
+  
+  # Now sort out male and female age groups ------------------------------        
+  tempDataMales <- tempData %>%
+    slice(17:35) %>%
+    mutate(state = states[ii - 1]) %>%
+    select(state, everything())
+  
+  # Rename columns
+  colnames(tempDataMales) <- c("state", "age", as.character(years))
+  
+  # Reorganize
+  tempDataMales <- tempDataMales %>%
+    gather("year", "deathrate", 3:ncol(tempDataMales)) %>%
+    mutate(year = as.numeric(year)) %>%
+    mutate(gender = "males",
+           deathrate = as.numeric(deathrate)) %>%
+    select(year, state, age, gender, deathrate)
 
-# Split pop column into gender and year and reorder columns
-splitPop <- strsplit(deathData$pop, "s")
-deathData$sex <- unlist(lapply(splitPop, function(x) x[1]))
-deathData$year <- as.numeric(unlist(lapply(splitPop, function(x) x[2])))
-deathData <- deathData %>%
-  select(-pop) %>%                 # remove pop
-  select(-deathrate, everything()) # put deathrate at end
+  # Females
+  tempDataFemales <- tempData %>%
+    slice(17:35) %>%
+    mutate(state = states[ii - 1]) %>%
+    select(state, everything())
+  
+  # Rename columns
+  colnames(tempDataFemales) <- c("state", "age", as.character(years))
+  
+  # Reorganize
+  tempDataFemales <- tempDataFemales %>%
+    gather("year", "deathrate", 3:ncol(tempDataFemales)) %>%
+    mutate(year = as.numeric(year)) %>%
+    mutate(gender = "females",
+           deathrate = as.numeric(deathrate)) %>%
+    select(year, state, age, gender, deathrate)
+  
+  # Merge all the data into one data frame
+  deathData <- bind_rows(deathData, tempDataAll, tempDataMales,
+                         tempDataFemales) %>% tbl_df
+  
+}
+
+# Tidy up the final data frame converting "85 and over" to 85+
+deathData[deathData$age == "85 and over", ]$age <- "85+"
 
 # Save the final cleaned data set 
-write.csv(deathData, file = file.path(cleanDataFolder, "ABS_deathrate_sex_age.csv"), row.names = FALSE)
+write.csv(erpasData, file = file.path(cleanDataFolder,
+  "ABS_Deathrate_Age_State_clean-2014.csv"), 
+  row.names = FALSE)
 
 ```
 
