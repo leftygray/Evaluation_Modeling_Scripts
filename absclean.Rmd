@@ -116,7 +116,7 @@ departData <- read_excel(file.path(absFolder,
 departData <- departData[, c(1:4)]
 
 # Convert first column to years 
-departData[,1] <- format(departData[, 1], "%Y")
+departData[, 1] <- format(departData[, 1], "%Y")
 
 # Rename columns
 colnames(departData) <- c("year", "permanent", "resident", "visitor")

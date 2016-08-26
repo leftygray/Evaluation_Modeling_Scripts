@@ -31,7 +31,7 @@ cleanDataFolder <- file.path(basePath,"data")
 setwd(file.path(basePath,"code"))
 
 # Primary script parameters
-dataYear <- 2014
+dataYear <- 2015
 
 ```
 
@@ -58,7 +58,6 @@ We also use broad population categories:
 rawdata <- file.path(privateDataPath, paste0("cascadeHIVnotifications-", 
                                       toString(dataYear), ".csv"))
 # Load the raw HIV notifications file and clean it up
-
 if (dataYear <= 2013) {
   hivdata <- read.csv(rawdata, colClasses = c("numeric", "numeric", "Date",
                     "numeric", "numeric", "Date", "numeric", "numeric", 
@@ -69,11 +68,11 @@ if (dataYear <= 2013) {
   hivdata <- read.csv(rawdata, colClasses = c("numeric", "numeric", "Date",
                     "numeric", "numeric", "Date", "numeric", "Date",
                     "numeric", "character", "numeric", "Date", "Date",
+                    "Date", "Date", "numeric",
                     "numeric", "numeric", "Date", "numeric", "character"))
 }
 
-# Rename variable for ease of ues
-
+# Rename variable for ease of use
 hivdata <- hivdata %>%
   rename(datediagnosis = datehiv, agehiv = age_hiv, exposure = expcode)
 
@@ -124,51 +123,52 @@ if (dataYear <= 2013) {
 }
 
 # Reclassification of exposure to the broad surveillance categories - may need to change manually
-hivdata[hivdata$exposure == "1A",]$exposure <- "msm"
-hivdata[hivdata$exposure == "1A3A",]$exposure <- "msm-idu"
-hivdata[hivdata$exposure == "1A3B",]$exposure <- "msm"
-hivdata[hivdata$exposure == "1A3C",]$exposure <- "msm"
-hivdata[hivdata$exposure == "1B",]$exposure <- "bisex-male"
-hivdata[hivdata$exposure == "1B3A",]$exposure <- "bisex-male-idu"
-hivdata[hivdata$exposure == "1B3B",]$exposure <- "bisex-male"
-hivdata[hivdata$exposure == "1C2A",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2A2B",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2B",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2C",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2D",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2E",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2F",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2G",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2H",]$exposure <- "hetero-unspecified"
-hivdata[hivdata$exposure == "1C3A",]$exposure <- "hetero-idu"
-hivdata[hivdata$exposure == "1C3A2B",]$exposure <- "hetero-idu"
-hivdata[hivdata$exposure == "1C3A2E",]$exposure <- "hetero-idu"
-hivdata[hivdata$exposure == "1C3B",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C3C",]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1D",]$exposure <- "hetero" #high-prev-country"
-hivdata[hivdata$exposure == "1E",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "1E3A",]$exposure <- "idu"
-hivdata[hivdata$exposure == "1E3B",]$exposure <- "blood-recipient"
-hivdata[hivdata$exposure == "1E3C",]$exposure <- "blood-recipient"
-hivdata[hivdata$exposure == "1F",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "1F3A",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "1F3B",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "1F3C",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "4A",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4B",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4C",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4D",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4E",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4F",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4G",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4J",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4K",]$exposure <- "mtct"
-hivdata[hivdata$exposure == "5A",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "5A1",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "5A2",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "5A3",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "5A4",]$exposure <- "unknown"
-hivdata[hivdata$exposure == "5B",]$exposure <- "unknown"
+hivdata[hivdata$exposure == "1A", ]$exposure <- "msm"
+hivdata[hivdata$exposure == "1A3A", ]$exposure <- "msm-idu"
+hivdata[hivdata$exposure == "1A3B", ]$exposure <- "msm"
+hivdata[hivdata$exposure == "1A3C", ]$exposure <- "msm"
+hivdata[hivdata$exposure == "1B", ]$exposure <- "bisex-male"
+hivdata[hivdata$exposure == "1B3A", ]$exposure <- "bisex-male-idu"
+hivdata[hivdata$exposure == "1B3B", ]$exposure <- "bisex-male"
+hivdata[hivdata$exposure == "1C2A", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2A2B", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2B", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2C", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2D", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2E", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2F", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2G", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2H", ]$exposure <- "hetero-unspecified"
+hivdata[hivdata$exposure == "1C3A", ]$exposure <- "hetero-idu"
+hivdata[hivdata$exposure == "1C3A2B", ]$exposure <- "hetero-idu"
+hivdata[hivdata$exposure == "1C3A2E", ]$exposure <- "hetero-idu"
+hivdata[hivdata$exposure == "1C3B", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C3C", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1D", ]$exposure <- "hetero" #high-prev-country"
+hivdata[hivdata$exposure == "1E", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "1E3A", ]$exposure <- "idu"
+hivdata[hivdata$exposure == "1E3B", ]$exposure <- "blood-recipient"
+hivdata[hivdata$exposure == "1E3C", ]$exposure <- "blood-recipient"
+hivdata[hivdata$exposure == "1F", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "1F3A", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "1F3B", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "1F3C", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "4A", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4B", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4C", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4D", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4E", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4F", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4G", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4J", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4K", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "5A", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "5A1", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "5A2", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "5A3", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "5A4", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "5B", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "", ]$exposure <- "unknown"
 
 # hivdata[hivdata$exposure == "",]$exposure <- "unknown"
 
@@ -183,7 +183,7 @@ hivdata[hivdata$exposure %in% msmgroup,]$expgroup <- "msm"
 hivdata[hivdata$exposure %in% pwidgroup,]$expgroup <- "pwid"
 hivdata[hivdata$exposure %in% heterogroup,]$expgroup <- "hetero"
 hivdata[hivdata$exposure %in% othergroup,]$expgroup <- "otherexp"
-hivdata[hivdata$exposure == "unknown",]$expgroup <- "unknown"
+hivdata[hivdata$exposure == "unknown", ]$expgroup <- "unknown"
 
 # Add broad population codes from region of birth (rob) and 
 # aboriginal variables - keep unknowns as NAs for imputation during the 
@@ -193,17 +193,36 @@ hivdata$countrygroup <- rep(NA,nrow(hivdata))
 hivdata[which(hivdata$cob == 1100),]$countrygroup <- "australia"
 hivdata[which(hivdata$rob == 9),]$countrygroup <- "bornsea"
 hivdata[which(hivdata$rob == 12),]$countrygroup <- "bornssa"
-hivdata[which(hivdata$rob %in% c(1,2,3,4,5,6,8,10,11)),]$countrygroup <- "othercob"
-hivdata[which(hivdata$rob == 7 & hivdata$cob != 1100),]$countrygroup <- "othercob"
+hivdata[which(hivdata$rob %in% c(1,2,3,4,5,6,8,10,11)), ]$countrygroup <-
+  "othercob"
+hivdata[which(hivdata$rob == 7 & hivdata$cob != 1100), ]$countrygroup <-
+  "othercob"
 
 hivdata$aboriggroup <- rep(NA,nrow(hivdata))
-hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <- "othercob"
-hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
-hivdata[which(hivdata$cob == 1100 & hivdata$aborig == "Indigenous"),]$aboriggroup <- "indigenous"
-hivdata[which(hivdata$cob == 1100 & hivdata$aborig == "Non indigenous"),]$aboriggroup <- "non-indigenous"
+
+if (dataYear < 2015) {
+  hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
+    "othercob"
+  hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
+  hivdata[which(hivdata$cob == 1100 & hivdata$aborig == "Indigenous"),
+          ]$aboriggroup <- "indigenous"
+  hivdata[which(hivdata$cob == 1100 & hivdata$aborig == "Non indigenous"),
+          ]$aboriggroup <- "non-indigenous"
+} else {
+  hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
+    "othercob"
+  hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
+  hivdata[which(hivdata$cob == 1100 & hivdata$indigenous == "Indigenous"),
+          ]$aboriggroup <- "indigenous"
+  hivdata[which(hivdata$cob == 1100 & hivdata$indigenous == "Non indigenous"),
+          ]$aboriggroup <- "non-indigenous"
+}
   
 # Save cleaned hivdata
-write.csv(hivdata, file = file.path(cleanDataFolder, paste("hivnotifications",toString(dataYear),".csv", sep ="")), row.names = FALSE)
+write.csv(hivdata, file = file.path(cleanDataFolder,
+                              paste("hivnotifications",
+                                    toString(dataYear), ".csv", 
+                                    sep ="")), row.names = FALSE)
 
 ```
 
@@ -427,8 +446,7 @@ ahodData <- filter(ahodData, year <= dataYear)
 
 #Save cleaned hivdata
 write.csv(ahodData, file = file.path(cleanDataFolder, 
-                                    paste("ahod", toString(dataYear),".csv", 
-                                          sep ="")), row.names = FALSE)
+          paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
 
 ```
 
