@@ -34,10 +34,10 @@ source(file.path(Rpath, "TidyLongitudinal.R"), echo=TRUE)
 setwd(file.path(basePath,"code"))
 
 # Order of states used by ABS
-states <- c("nsw","vic","qld","sa","wa","tas","nt","act","all")
+states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2015
+dataYear <- 2016
 
 ```
 

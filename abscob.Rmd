@@ -1,0 +1,96 @@
+ABS ERP by Country of Birth 
+===========================
+
+```{r initialization}
+# Clear workspace
+rm(list=ls()) 
+
+# Libraries for data manipulation
+require(readxl)
+require(dplyr)
+require(tidyr)
+require(utils)
+
+# Key folder paths
+basePath <- file.path(path.expand("~"), "Research", "!Evaluation_Modelling")
+absFolder <- file.path(basePath,"data","ABS") # Folder with the raw ABS data
+cleanDataFolder <- file.path(basePath,"data")
+
+# Set working directory
+setwd(file.path(basePath,"code"))
+ 
+# Primary script parameters
+dataYear <- 2014
+
+# Age group
+age15 <- TRUE  # 15+age group or all ages
+
+```
+
+
+```{r cleandata}
+# This script cleans the ABS data into the format we want. 
+
+### Process ERP data
+
+# Read in second sheet skipping most of the bumph
+if (age15) {
+  erpdata <- read_excel(file.path(absFolder,"34120-ABS_ERP_Country_Birth_15-plus_2014.xlsx"),
+                      sheet = 1, skip = 7)
+  # Delete unnecessary rows
+  nrows <- nrow(erpdata)
+  erpdata <- erpdata[1:(nrows-3),]
+  
+  # Rename columns
+  colnames(erpdata) <- c("cob", "75+", "15-19", "20-24", "25-29", "30-34", "35-39",
+                         "40-44", "45-49", "50-54", "55-59", "60-64", "65-69",
+                         "70-74")
+  
+    
+  # Gather data and sum
+  erpdata <- erpdata %>% 
+    gather("age", "number", 2:ncol(erpdata)) %>%
+    group_by(cob) %>%
+    summarise(estimate = sum(number))
+} else {
+  erpdata <- read_excel(file.path(absFolder,"34120-ABS_ERP_Country_Birth_2014.xlsx"),
+                      sheet = 1, skip = 7)
+  # Delete unnecessary columns and rows
+  ncolumns <- ncol(erpdata)
+  nrows <- nrow(erpdata)
+  erpdata <- erpdata[1:(nrows-3),1:2]
+  
+  # Rename columns
+  colnames(erpdata) <- c("cob", "estimate")
+}
+
+# Specify region codes
+ozCodes <- c("1101", "1102", "1199")
+bornssaCodes <- c(9201, 9201, 9101, 9202, 9102, 9203, 9103, 9104, 9105, 9106, 
+             9204, 9107, 9108, 9111, 9205, 9112, 9206, 9207, 9113, 9114, 9115,
+             9116, 9117, 9208, 9211, 9118, 9212, 9213, 9121, 9122, 9214, 9215,
+             9216, 9217, 9123, 9124, 9218, 9221, 9222, 9125, 9126, 9223, 9127,
+             9224, 9225, 9226, 9227, 9128, 9228, 9231, 9232)
+bornssaCodes <- as.character(bornssaCodes)
+
+bornseaCodes <- c(5201, 5102, 5206, 5202, 5103, 5203, 5101, 5204, 5205, 5104, 5105)
+bornseaCodes <- as.character(bornseaCodes)
+
+# otherCodes <- C() - doesn't need to be specified as it can be calculated with
+# the other data
+
+# Modify first column to remove country name
+erpdata$cob <- unlist(lapply(strsplit(erpdata$cob, ":"), function(x) x[1]))
+
+# Extract the numbers we want
+totalpop <- tail(erpdata,1)$estimate
+ozpop <-  sum(filter(erpdata, cob %in% ozCodes)$estimate)
+ssapop <- sum(filter(erpdata, cob %in% bornssaCodes)$estimate)
+seapop <- sum(filter(erpdata, cob %in% bornseaCodes)$estimate)
+otherpop <- totalpop - ozpop - ssapop - seapop
+
+# Save the final cleaned data set 
+# write.csv(migrationData, file = file.path(cleanDataFolder, "ABS_migration_clean.csv"), row.names = FALSE)
+
+```
+

@@ -31,7 +31,7 @@ cleanDataFolder <- file.path(basePath,"data")
 setwd(file.path(basePath,"code"))
 
 # Primary script parameters
-dataYear <- 2015
+dataYear <- 2016
 
 ```
 
@@ -212,17 +212,18 @@ if (dataYear < 2015) {
   hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
     "othercob"
   hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
-  hivdata[which(hivdata$cob == 1100 & hivdata$indigenous == "Indigenous"),
+  hivdata[which(hivdata$cob == 1100 & hivdata$indigenous == "Aboriginal"),
           ]$aboriggroup <- "indigenous"
-  hivdata[which(hivdata$cob == 1100 & hivdata$indigenous == "Non indigenous"),
+  hivdata[which(hivdata$cob == 1100 & 
+                  hivdata$indigenous == "Non-Indigenous"),
           ]$aboriggroup <- "non-indigenous"
 }
   
 # Save cleaned hivdata
 write.csv(hivdata, file = file.path(cleanDataFolder,
-                              paste("hivnotifications",
-                                    toString(dataYear), ".csv", 
-                                    sep ="")), row.names = FALSE)
+                              paste0("hivnotifications",
+                                    toString(dataYear), ".csv"), 
+                              row.names = FALSE)
 
 ```
 
@@ -287,7 +288,9 @@ pharmData <- pharmData %>%
   select(gender, state, num_range("X",startyear:dataYear))
 
 # Finally have it a relatively tidy format so save to output file
-write.csv(pharmData, file = file.path(cleanDataFolder, paste("pharmdash_HIVpatients",toString(dataYear),".csv", sep ="")), row.names = FALSE)
+write.csv(pharmData, file = file.path(cleanDataFolder, 
+  paste("pharmdash_HIVpatients", toString(dataYear), 
+  ".csv", sep ="")), row.names = FALSE)
 
 ```
 
@@ -430,7 +433,7 @@ ahodData <- read_excel(file.path(dataPath,
 
 # Do some simple cleaning
 ahodData$state <- tolower(ahodData$state)
-ahodData$mode <- tolower(ahodData$mode)
+ahodData$mode <- tolower(ahodData$population)
 
 # Remove last two columns
 ahodData <- ahodData[,1:(ncol(ahodData)-2)]

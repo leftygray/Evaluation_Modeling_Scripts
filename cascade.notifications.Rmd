@@ -42,7 +42,7 @@ libraries.
 rm(list=ls()) 
 
 # Set working directory
-setwd(file.path("/","SVR-NAS","Public","SERP","Cascades","HIV"))
+# setwd(file.path("/","SVR-NAS","Public","SERP","Cascades","HIV"))
 
 # Load libraries for data manipulation - they are installed if not already
 # done so
@@ -77,26 +77,28 @@ specify the input and output files.
 ```{r User specifications, tidy = TRUE}
 
 # User specified year
-yearAnalysis <- 2015
+yearAnalysis <- 2016
 
 ```
 
 
 ```{r files, tidy = TRUE}
 # Raw notifications data - MUST REMAIN PRIVATE
-rawDataFile <- file.path(getwd(),"data", "National Registry Data",   
-                         paste("rawHIVnotifications-",toString(yearAnalysis), 
-                               ".dta",sep = ""))
+rawDataFile <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades", 
+                         "HIV", "data", "National Registry Data",   
+                         paste0("rawHIVnotifications-", 
+                                toString(yearAnalysis), ".dta"))
 
 # De-identified output file name
-cleanDataFile <- file.path(getwd(),"data",
-                           paste("cascadeHIVnotifications-",
-                                 toString(yearAnalysis),".csv",
-                                                 sep = ""))
+cleanDataFile <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades",  
+                           "HIV", "data", 
+                           paste0("cascadeHIVnotifications-",
+                                  toString(yearAnalysis), 
+                                  ".csv"))
 
-cleanDataFileBP <- file.path(getwd(),"data",
-                             paste("backprojectionHIVnotifications-",                                                 toString(yearAnalysis),".csv",
-                                                 sep = ""))
+cleanDataFileBP <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades", 
+                             "HIV", "data", 
+                             paste0("backprojectionHIVnotifications-",                                                 toString(yearAnalysis), ".csv"))
 
 ```
 
