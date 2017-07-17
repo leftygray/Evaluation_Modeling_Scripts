@@ -208,7 +208,7 @@ if (dataYear < 2015) {
           ]$aboriggroup <- "indigenous"
   hivdata[which(hivdata$cob == 1100 & hivdata$aborig == "Non indigenous"),
           ]$aboriggroup <- "non-indigenous"
-} else {
+} else if (dataYear == 2015)  {
   hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
     "othercob"
   hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
@@ -217,12 +217,23 @@ if (dataYear < 2015) {
   hivdata[which(hivdata$cob == 1100 & 
                   hivdata$indigenous == "Non-Indigenous"),
           ]$aboriggroup <- "non-indigenous"
+} else {
+  hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
+    "othercob"
+  hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
+  hivdata[which(hivdata$cob == 1100 & hivdata$indig == 1),
+          ]$aboriggroup <- "indigenous"
+  hivdata[which(hivdata$cob == 1100 & 
+                  hivdata$indigenous != 1),
+          ]$aboriggroup <- "non-indigenous"
 }
+
+
   
 # Save cleaned hivdata
 write.csv(hivdata, file = file.path(cleanDataFolder,
                               paste0("hivnotifications",
-                                    toString(dataYear), ".csv"), 
+                                    toString(dataYear), ".csv")), 
                               row.names = FALSE)
 
 ```
