@@ -16,9 +16,10 @@ rm(list=ls())
 
 # Libraries for data manipulation
 require(readxl)
-require(dplyr)
-require(tidyr)
-require(utils)
+require(tidyverse)
+# require(dplyr)
+# require(tidyr)
+# require(utils)
 
 # Key folder paths
 Rpath <- file.path(path.expand("~"), "R") 
@@ -293,6 +294,50 @@ interstateData <- inner_join(arrData,depData, by=c("year", "state"))
 # Save the final cleaned data set 
 write.csv(interstateData, file = file.path(cleanDataFolder,
   paste0("ABS_interstate_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+```
+
+```{r Interstate migration by age and sex}
+# This chuck reads in the saved csv file downloaded from ABS.Stat with the 
+# data for Interstate migration: Arrivals, departures and net, 
+# State/territory, Age and sex - Calendar years, 1997 onwards. 
+
+# Read in and do basic tidying of downloaded file
+interMigrationData <- read_csv(file.path(absFolder,
+  paste0("3101-ABSSTAT_Interstate_movement_age_sex-1997-2016.csv"))) %>%
+  select(-MEASURE, -AGE, -SEX_ABS, -ASGS_2011, -FREQUENCY, -Frequency, 
+    -TIME, -Flags, -`Flag Codes`) %>%
+  # Rename columns
+  rename(type = `Interstate Migration`, sex = Sex, age = Age, 
+    region = Region, year = Time, value = Value) %>%
+  select(year, region, sex, age, type, value) %>%
+  mutate(region = tolower(region), sex = tolower(sex), 
+    type = tolower(type)) %>%
+  # Tidy up strings
+  mutate(age = str_replace_all(age, " ", ""),
+    type = str_sub(type, 5, -1),
+    sex = ifelse(sex == "persons", "all", sex)) %>%
+  mutate(age = ifelse(age == "75andover", "75+", age)) %>%
+  mutate(age = ifelse(age == "Allages", "all", age)) %>%
+  # Rename all the regions
+  mutate(region = ifelse(region == "australia", "all", region)) %>%
+  mutate(region = ifelse(region == "australian capital territory", "act",
+    region)) %>%
+  mutate(region = ifelse(region == "new south wales", "nsw", region)) %>%
+  mutate(region = ifelse(region == "northern territory", "nt", region)) %>%
+  mutate(region = ifelse(region == "other territories", "other", region)) %>%
+  mutate(region = ifelse(region == "queensland", "qld", region)) %>%
+  mutate(region = ifelse(region == "south australia", "sa", region)) %>%
+  mutate(region = ifelse(region == "tasmania", "tas", region)) %>%
+  mutate(region = ifelse(region == "victoria", "vic", region)) %>%
+  mutate(region = ifelse(region == "western australia", "wa", region)) %>%
+  # Only keep departures and arrivals and remove other
+  filter(type != "interstate", region != "other")
+
+# Save the final cleaned data set 
+write.csv(interMigrationData, file = file.path(cleanDataFolder,
+  paste0("ABS_interstate_age_sex_clean-", toString(dataYear), ".csv")), 
   row.names = FALSE)
 
 ```
