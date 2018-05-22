@@ -32,9 +32,6 @@ cleanDataFolder <- file.path(basePath,"data", "HIV")
 cascadeDataFolder <- file.path(basePath,"project_care_cascades", "HIV", 
   "data")
 
-# Set working directory
-setwd(file.path(basePath,"code"))
-
 # Primary script parameters
 dataYear <- 2016
 
