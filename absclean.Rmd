@@ -5,40 +5,41 @@ This script is used to load and clean raw demographic data from the
 Australian Burea of Statistica (ABS). These data are primarily used for 
 care cascade calculations but can be useful for Australian evaluation
 models in general. The original raw data sets are stored 
-in the ~/Evaluation\_Modelling/data/ABS/ folder. The resulting cleaned
+in the ~/Evaluation\_Modelling/data/ABS/raw/ folder. The resulting cleaned
 data sets are saved as dataframes in csv files in the
-~/Evaluation\_Modelling/data/ folder. A description of the ABS data sets 
-and important data definitions are provided in each section. 
+~/Evaluation\_Modelling/data/ABS/ folder. A description of the ABS data sets 
+and important data definitions are provided in each chunk. Each chunk can 
+be run separately. 
 
-```{r initialization}
-# Clear workspace
-rm(list=ls()) 
+Cleaned data is also stored/copied in specific project folder as required. 
+In particular ~/Evaluation\_Modelling/project\_care\_cascades/data.
+
+```{r Initialization}
+# Restart R and set working directory to source file location
 
 # Libraries for data manipulation
-require(readxl)
-require(tidyverse)
-# require(dplyr)
-# require(tidyr)
-# require(utils)
+require(LeftysRpkg)
+LoadLibrary(tidyverse)
+LoadLibrary(lubridate)
+LoadLibrary(readxl)
 
 # Key folder paths
-Rpath <- file.path(path.expand("~"), "R") 
-basePath <- file.path(path.expand("~"), "Research",
-                      "!Evaluation_Modelling")
-absFolder <- file.path(basePath,"data","ABS") # Folder with raw ABS data
-cleanDataFolder <- file.path(basePath,"data")
+basePath <- file.path(path.expand("~"), "Research", "!Evaluation_Modelling")
+absFolder <- file.path(basePath,"data","ABS", "raw") # Folder with raw ABS data
+cleanDataFolder <- file.path(basePath,"data", "ABS") # Where cleaned data goes
+
+# Additional cleaned data folders for copies
+cascadeDataFolder <- file.path(basePath,"project_care_cascades", "data",
+  "ABS")
 
 # Source useful functions
-source(file.path(Rpath, "TidyLongitudinal.R"), echo=TRUE)
-
-# Set working directory
-setwd(file.path(basePath,"code"))
+source("TidyLongitudinal.R")
 
 # Order of states used by ABS
 states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2016
+dataYear <- 2016 # Annual data from 2014
 
 ```
 
@@ -57,7 +58,7 @@ ncolumns <- ncol(erpData)
 erpData <- erpData[, c(1, 20:ncolumns)]
 
 # Convert first column to years 
-erpData[, 1] <- format(erpData[, 1], "%Y")
+erpData[, 1] <- year(erpData$`Series ID`)
 
 # Rename columns
 colnames(erpData) <- c("year", states)
@@ -75,6 +76,10 @@ erpData <- erpData %>%
 
 # Save the final cleaned data set 
 write.csv(erpData, file = file.path(cleanDataFolder, 
+  paste0("ABS_ERP_clean-", toString(dataYear) ,".csv")), 
+  row.names = FALSE)
+
+write.csv(erpData, file = file.path(cascadeDataFolder, 
   paste0("ABS_ERP_clean-", toString(dataYear) ,".csv")), 
   row.names = FALSE)
 ```
@@ -117,7 +122,7 @@ departData <- read_excel(file.path(absFolder,
 departData <- departData[, c(1:4)]
 
 # Convert first column to years 
-departData[, 1] <- format(departData[, 1], "%Y")
+departData[, 1] <- year(departData$`Series ID`)
 
 # Rename columns
 colnames(departData) <- c("year", "permanent", "resident", "visitor")
@@ -142,6 +147,9 @@ write.csv(departData, file = file.path(cleanDataFolder,
   paste0("ABS_departures_clean-", toString(dataYear), ".csv")), 
   row.names = FALSE)
 
+write.csv(departData, file = file.path(cascadeDataFolder,
+  paste0("ABS_departures_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
 ```
 
 ## Proportion of people who leave Australia by state and territory
@@ -185,7 +193,10 @@ two years behind. First year is always 2004.
 # Process NOM departure data - Have to read in separate sheets
 
 # Need to specify years first
-years <- 2004:(dataYear-2)
+if (dataYear >= 2014) {
+  nomYear <- 2014
+}
+years <- 2004:nomYear
 
 # Initilize results data frame
 nomData <- data.frame(year = as.numeric(),
@@ -228,6 +239,10 @@ write.csv(nomData, file = file.path(cleanDataFolder,
   paste0("ABS_migration_clean-", toString(dataYear), ".csv")), 
   row.names = FALSE)
 
+write.csv(nomData, file = file.path(cascadeDataFolder,
+  paste0("ABS_migration_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
 ```
 
 ## Proportion of people who move interstate
@@ -240,7 +255,7 @@ arrData <- read_excel(file.path(absFolder,
          toString(dataYear), ".xls")), sheet = 2, skip = 9)
 
 # Convert first column to years 
-arrData[,1] <- format(arrData[,1],"%Y")
+arrData[, 1] <- year(arrData$`Series ID`)
 
 # Convert colnames
 colnames(arrData) <- c("year",states)
@@ -267,7 +282,7 @@ depData <- read_excel(file.path(absFolder,
          toString(dataYear), ".xls")), sheet = 2, skip = 9)
 
 # Convert first column to years 
-depData[,1] <- format(depData[,1],"%Y")
+depData[, 1] <-  year(depData$`Series ID`)
 
 # Convert colnames
 colnames(depData) <- c("year",states)
@@ -296,6 +311,10 @@ write.csv(interstateData, file = file.path(cleanDataFolder,
   paste0("ABS_interstate_clean-", toString(dataYear), ".csv")), 
   row.names = FALSE)
 
+write.csv(interstateData, file = file.path(cascadeDataFolder,
+  paste0("ABS_interstate_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
 ```
 
 ```{r Interstate migration by age and sex}
@@ -318,8 +337,11 @@ interMigrationData <- read_csv(file.path(absFolder,
   mutate(age = str_replace_all(age, " ", ""),
     type = str_sub(type, 5, -1),
     sex = ifelse(sex == "persons", "all", sex)) %>%
-  mutate(age = ifelse(age == "75andover", "75+", age)) %>%
-  mutate(age = ifelse(age == "Allages", "all", age)) %>%
+  mutate(sex = ifelse(sex == "males", "male", sex),
+    sex = ifelse(sex == "females", "female", sex)) %>%
+  mutate(age = str_c("a", str_replace_all(age, "-", "_"))) %>%
+  mutate(age = ifelse(age == "a75andover", "a75+", age)) %>%
+  mutate(age = ifelse(age == "aAllages", "all", age)) %>%
   # Rename all the regions
   mutate(region = ifelse(region == "australia", "all", region)) %>%
   mutate(region = ifelse(region == "australian capital territory", "act",
@@ -337,6 +359,10 @@ interMigrationData <- read_csv(file.path(absFolder,
 
 # Save the final cleaned data set 
 write.csv(interMigrationData, file = file.path(cleanDataFolder,
+  paste0("ABS_interstate_age_sex_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+write.csv(interMigrationData, file = file.path(cascadeDataFolder,
   paste0("ABS_interstate_age_sex_clean-", toString(dataYear), ".csv")), 
   row.names = FALSE)
 
@@ -375,6 +401,10 @@ write.csv(erpasData, file = file.path(cleanDataFolder,
   paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
   row.names = FALSE)
 
+write.csv(erpasData, file = file.path(cascadeDataFolder,
+  paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
 ```
 
 ## Estimated death rates
@@ -389,8 +419,8 @@ deathDataAll <- read_excel(file.path(absFolder,
   gather("year", "deathrate")
 
 # Save the final cleaned data set 
-write.csv(deathData, file = file.path(cleanDataFolder,
-  "ABS_Deathrate_All_clean-2014.csv"), 
+write.csv(deathDataAll, file = file.path(cleanDataFolder,
+  "ABS_deathrate_all_clean-2014.csv"), 
   row.names = FALSE)
 
 ```
@@ -487,7 +517,7 @@ deathData[deathData$age == "85 and over", ]$age <- "85+"
 
 # Save the final cleaned data set 
 write.csv(deathData, file = file.path(cleanDataFolder,
-  "ABS_Deathrate_Age_State_clean-2014.csv"), 
+  "ABS_deathrate_age_state_clean-2014.csv"), 
   row.names = FALSE)
 
 ```
