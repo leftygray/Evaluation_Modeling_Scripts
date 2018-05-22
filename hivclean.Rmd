@@ -4,28 +4,33 @@ HIV data cleaning
 This script is used to load and clean the raw HIV related data from various
 sources. These data are primarily used for the HIV cascade calculations.
 The resulting cleaned data sets are saved as dataframes in csv files in the
-~/Evaluation\_Modelling/project\_care\_cascades/data/
-folder. 
+~/Evaluation\_Modelling/data/HIV/ folder. As these data are primarily used
+for the HIV cascade calculations a second copy is saved in the 
+~/Evaluation\_Modelling/project\_care\_cascades/HIV/data/
+folder except for the HIV notifications file which is not kept to the 
+cascades folder for security purposes.  
 
-
-```{r initialization}
-# Clear workspace
-rm(list=ls()) 
+```{r Initialization}
+# Restart R and set working directory to source file location
 
 # Libraries for data manipulation
-require(readxl)
-require(dplyr)
-require(tidyr)
-require(utils)
+require(LeftysRpkg)
+LoadLibrary(tidyverse)
+LoadLibrary(lubridate)
+LoadLibrary(readxl)
 
 # Key folder paths
 privateDataPath <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades",
                              "HIV", "data")
 basePath <- file.path(path.expand("~"), "Research", 
-                      "!Evaluation_Modelling", "project_care_cascades")
-dataPath <- file.path(basePath,"data","raw")
+                      "!Evaluation_Modelling")
+dataPath <- file.path(basePath, "data", "HIV", "raw")
 
-cleanDataFolder <- file.path(basePath,"data")
+cleanDataFolder <- file.path(basePath,"data", "HIV")
+
+# Additional cleaned data folders for copies
+cascadeDataFolder <- file.path(basePath,"project_care_cascades", "HIV", 
+  "data")
 
 # Set working directory
 setwd(file.path(basePath,"code"))
@@ -232,7 +237,7 @@ if (dataYear < 2015) {
   
 # Save cleaned hivdata
 write.csv(hivdata, file = file.path(cleanDataFolder,
-                              paste0("hivnotifications",
+                              paste0("hivnotifications_clean-",
                                     toString(dataYear), ".csv")), 
                               row.names = FALSE)
 
@@ -242,7 +247,7 @@ write.csv(hivdata, file = file.path(cleanDataFolder,
 
 Description of the output from Prospection and the cleaning process.
 
-```{r prospection}
+```{r Prospection}
 # Raw prospection file
 rawPharmDash <- file.path(dataPath,paste("PharmDash_HIV_Patients_Treatment-", toString(dataYear), ".csv",sep=""))
 
@@ -300,8 +305,12 @@ pharmData <- pharmData %>%
 
 # Finally have it a relatively tidy format so save to output file
 write.csv(pharmData, file = file.path(cleanDataFolder, 
-  paste("pharmdash_HIVpatients", toString(dataYear), 
-  ".csv", sep ="")), row.names = FALSE)
+  paste0("pharmdash_HIVpatients", toString(dataYear), 
+  ".csv")), row.names = FALSE)
+
+write.csv(pharmData, file = file.path(cascadeDataFolder, 
+  paste0("pharmdash_HIVpatients_clean-", toString(dataYear), 
+  ".csv")), row.names = FALSE)
 
 ```
 
@@ -310,7 +319,7 @@ write.csv(pharmData, file = file.path(cleanDataFolder,
 To get trends in number on treatment I use the total spending data from a PBS spending data set provided by Hamish McManus
 
 ```{r s100}
-# Raw s100 spending file
+# Raw s100 spending file only up to 2015
 rawS100 <- file.path(dataPath,"S100_2015.xls",sep="")
 
 # Load the file and clean it up
@@ -322,7 +331,11 @@ artCost <- s100data %>%
   summarise(totalspend = sum(totalcost))
 
 # Save cleaned hivdata
-write.csv(artCost, file = file.path(cleanDataFolder, paste("s100_treatment_costs.csv", sep ="")), row.names = FALSE)
+write.csv(artCost, file = file.path(cleanDataFolder,
+  paste0("s100_treatment_costs_clean-2015.csv")), row.names = FALSE)
+
+write.csv(artCost, file = file.path(cascadeDataFolder,
+  paste0("s100_treatment_costs_clean-2015.csv")), row.names = FALSE)
 
 ```
 
@@ -332,11 +345,16 @@ To estimate the total number of people living with HIV I need to know the
 estimated number living with undiagnosed infection. This is provided by 
 James Jansson using his back-projection model. 
 
-```{r undiagnosed}
+```{r Undiagnosed - Deprecated}
 # Clean up the results from the back projection analysis and store proportion 
-# undiagnosed and proportion who die each year from MSM and non-MSM
+# undiagnosed and proportion who die each year from MSM and non-MSM.
+# 
+# This is now deprecated and does not need to be run anymore. Only has 
+# results up to 2013. 
 
-projDataPath <- file.path(cleanDataFolder,"backprojection-clean",toString(dataYear))
+projYear <- 2013
+projDataPath <- file.path(dataPath, "backprojection-clean",
+  toString(projYear))
 
 # Read in the files we want
 undiagMSM <- read_excel(file.path(projDataPath,"undiagnosedmsm.xlsx"))
@@ -358,9 +376,11 @@ propMSMUndiagMax <- undiagMSM$UpperCI/(undiagMSM$UpperCI + diagMSM$lowerCI)
 propMSMUndiagMax[is.nan(propMSMUndiagMax)] <- NA
 
 # Calculate the range in the proportion for Non-MSM
-propNonMSMUndiagMin <- undiagNonMSM$lowerCI/(undiagNonMSM$lowerCI + diagNonMSM$UpperCI)
+propNonMSMUndiagMin <- undiagNonMSM$lowerCI/(undiagNonMSM$lowerCI +
+    diagNonMSM$UpperCI)
 propNonMSMUndiagMin[is.nan(propNonMSMUndiagMin)] <- NA
-propNonMSMUndiagMax <- undiagNonMSM$UpperCI/(undiagNonMSM$UpperCI + diagNonMSM$lowerCI)
+propNonMSMUndiagMax <- undiagNonMSM$UpperCI/(undiagNonMSM$UpperCI +
+    diagNonMSM$lowerCI)
 propNonMSMUndiagMax[is.nan(propNonMSMUndiagMax)] <- NA
 
 # Put everything in a data frame
@@ -375,7 +395,11 @@ projectUndiag <- data.frame(year = undiagMSM$year,
 
 
 # Write data frame to file 
-write.csv(projectUndiag, file = file.path(cleanDataFolder, "projectedUndiagnosed.csv"), row.names = FALSE)
+write.csv(projectUndiag, file = file.path(cleanDataFolder,
+  "projectedUndiagnosed_clean-2013.csv"), row.names = FALSE)
+
+write.csv(projectUndiag, file = file.path(cascadeDataFolder,
+  "projectedUndiagnosed_clean-2013.csv"), row.names = FALSE)
 
 ```
 
@@ -389,7 +413,9 @@ estimate.
 # Clean up the results from the back projection analysis and store proportion 
 # who die each year from MSM and non-MSM
 
-projDataPath <- file.path(cleanDataFolder,"backprojection-clean",toString(dataYear))
+projYear <- 2013
+projDataPath <- file.path(dataPath, "backprojection-clean",
+  toString(projYear))
 
 # Read in the files we want
 deathsMSM <- read_excel(file.path(projDataPath,"deathsmsm.xlsx"))
@@ -428,7 +454,11 @@ projectDeaths <- data.frame(year = deathsMSM$year,
 
 
 # Write data frame to file 
-write.csv(projectDeaths, file = file.path(cleanDataFolder, "projectedDeaths.csv"), row.names = FALSE)
+write.csv(projectDeaths, file = file.path(cleanDataFolder, 
+  "projectedDeaths_clean-2013.csv"), row.names = FALSE)
+
+write.csv(projectDeaths, file = file.path(cascadeDataFolder, 
+  "projectedDeaths_clean-2013.csv"), row.names = FALSE)
 
 ```
 
@@ -437,30 +467,33 @@ write.csv(projectDeaths, file = file.path(cleanDataFolder, "projectedDeaths.csv"
 ```{r ahoddata}
 # Clean up the ahod data provided by the biostats program
 
-# Load the ahod data
-ahodData <- read_excel(file.path(dataPath, 
-                               paste("ahod", toString(dataYear),".xlsx", 
-                                          sep ="")))
+# Load the ahod data. Only have it this form for 2013-2014
+if (dataYear %in% c(2014, 2015)) {
 
-# Do some simple cleaning
-ahodData$state <- tolower(ahodData$state)
-ahodData$mode <- tolower(ahodData$population)
-
-# Remove last two columns
-ahodData <- ahodData[,1:(ncol(ahodData)-2)]
-
-# Convert year to number
-ahodData$year <- as.numeric(ahodData$year)
-
-# Replace "-99" with NA
-ahodData[ahodData == -99] <- NA
-
-# Filter out unnecessary years
-ahodData <- filter(ahodData, year <= dataYear)
-
-#Save cleaned hivdata
-write.csv(ahodData, file = file.path(cleanDataFolder, 
-          paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
+  ahodData <- read_excel(file.path(dataPath, 
+    paste0("ahod", toString(dataYear),".xlsx")))
+  
+  # Do some simple cleaning
+  ahodData$state <- tolower(ahodData$state)
+  ahodData$mode <- tolower(ahodData$population)
+  
+  # Remove last two columns
+  ahodData <- ahodData[,1:(ncol(ahodData)-2)]
+  
+  # Convert year to number
+  ahodData$year <- as.numeric(ahodData$year)
+  
+  # Replace "-99" with NA
+  ahodData[ahodData == -99] <- NA
+  
+  # Filter out unnecessary years
+  ahodData <- filter(ahodData, year <= dataYear)
+  
+  #Save cleaned hivdata
+  write.csv(ahodData, file = file.path(cleanDataFolder, 
+    paste0("ahod_clean-", toString(dataYear),".csv")), 
+    row.names = FALSE)
+}
 
 ```
 
