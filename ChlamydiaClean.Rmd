@@ -35,7 +35,7 @@ LoadLibrary(tidyverse)
 LoadLibrary(readxl)
 
 # Key folder paths
-basePath <- file.path(path.expand("~"), "Research", "!Evaluation_Modelling")
+basePath <- file.path(dirname(getwd()))
 dataPath <- file.path(basePath,"data","Chlamydia", "raw")
 cleanDataFolder <- file.path(basePath,"data", "Chlamydia") # Cleaned data 
 

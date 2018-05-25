@@ -24,7 +24,7 @@ LoadLibrary(lubridate)
 LoadLibrary(readxl)
 
 # Key folder paths
-basePath <- file.path(path.expand("~"), "Research", "!Evaluation_Modelling")
+basePath <- file.path(dirname(getwd()))
 absFolder <- file.path(basePath,"data","ABS", "raw") # Folder with raw ABS data
 cleanDataFolder <- file.path(basePath,"data", "ABS") # Where cleaned data goes
 
