@@ -11,7 +11,7 @@ LoadLibrary(zoo)
 
 # Key folder paths
 basePath <- file.path(dirname(getwd()))
-absFolder <- file.path(basePath,"data","ABS", "raw") # Folder with raw ABS data
+absFolder <- file.path(basePath,"data","ABS", "raw", "NOM") # Folder with raw ABS data
 cleanDataFolder <- file.path(basePath,"data", "ABS") # Where cleaned data goes
 
 # Additional cleaned data folders for copies
@@ -304,7 +304,7 @@ cobList <- window(target$COB, deltat=61)
 cobList <- cobList[1:287]
 
 #write.csv(cobList, "C:/Users/nbretana/Desktop/NOM Data/Results/countrCode.xls", row.names = FALSE)
-cobCodes <- read_excel("C:/Users/nbretana/Desktop/NOM Data/Results/countryCode.xls")
+cobCodes <- read_excel(file.path(absFolder, "countryCode.xls"))
 
 nomRawAll <- rbind(nomRawNSW, nomRawACT)
 nomRawAll <- rbind(nomRawAll, nomRawNT)
@@ -315,7 +315,7 @@ nomRawAll <- rbind(nomRawAll, nomRawVIC)
 nomRawAll <- rbind(nomRawAll, nomRawWA)
 nomRawAll <- rbind(nomRawAll, nomRawAUS)
 
-write.csv(nomRawAll, "C:/Users/nbretana/Desktop/NOM Data/Results/countrCode.xls", row.names = FALSE)
+write.csv(nomRawAll, file.path(absFolder, "countrCode.xls"), row.names = FALSE)
 
 nomAll <- data.frame(year=integer(),age=character(), state=character(), country=character(), gender=character(), nom=integer(), stringsAsFactors = FALSE)
 index<-1
