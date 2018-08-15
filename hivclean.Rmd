@@ -32,7 +32,7 @@ cascadeDataFolder <- file.path(basePath,"project_care_cascades", "HIV",
   "data")
 
 # Primary script parameters
-dataYear <- 2016
+dataYear <- 2017
 
 ```
 
