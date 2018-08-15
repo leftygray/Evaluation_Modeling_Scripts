@@ -20,8 +20,9 @@ LoadLibrary(lubridate)
 LoadLibrary(readxl)
 
 # Key folder paths
-privateDataPath <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades",
-                             "HIV", "data")
+privateDataPath <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
+  "National HIV Registry", "2017", "National", "Hamish & Richard")
+
 basePath <- file.path(dirname(getwd()))
 dataPath <- file.path(basePath, "data", "HIV", "raw")
 
@@ -56,21 +57,27 @@ We also use broad population categories:
 ```{r notifications}
 # Raw HIV notifications file
 
-rawdata <- file.path(privateDataPath, paste0("cascadeHIVnotifications-", 
-                                      toString(dataYear), ".csv"))
+rawdata <- file.path(privateDataPath, paste0("cascadeHIVnotifications-raw-", 
+  toString(dataYear), ".csv"))
+
 # Load the raw HIV notifications file and clean it up
 if (dataYear <= 2013) {
   hivdata <- read.csv(rawdata, colClasses = c("numeric", "numeric", "Date",
-                    "numeric", "numeric", "Date", "numeric", "numeric", 
-                    "character", "numeric", "Date", "numeric", "numeric",
-                    "numeric", "numeric"))
+    "numeric", "numeric", "Date", "numeric", "numeric", 
+    "character", "numeric", "Date", "numeric", "numeric",
+    "numeric", "numeric"))
   
-} else {
+} else if (dataYear %in% 2014:2016) {
   hivdata <- read.csv(rawdata, colClasses = c("numeric", "numeric", "Date",
-                    "numeric", "numeric", "Date", "numeric", "Date",
-                    "numeric", "character", "numeric", "Date", "Date",
-                    "Date", "Date", "numeric",
-                    "numeric", "numeric", "Date", "numeric", "character"))
+    "numeric", "numeric", "Date", "numeric", "Date",
+    "numeric", "character", "numeric", "Date", "Date",
+    "Date", "Date", "numeric",
+    "numeric", "numeric", "Date", "numeric", "character"))
+} else {
+  hivdata <- read.csv(rawdata, colClasses = c("character", "character", 
+    "Date",  "numeric", "character", "Date", "numeric", "Date", "numeric", 
+    "character", "numeric", "Date", "Date", "Date", "Date", "numeric",
+    "numeric", "numeric", "Date", "numeric", "numeric", "numeric"))
 }
 
 # Rename variable for ease of use
@@ -83,14 +90,27 @@ if (dataYear > 2013){
 
 # Replace codes with easier to use strings - so we don't have to look up 
 # what they mean
-hivdata[hivdata$sex == 1,]$sex <- "male" 
-hivdata[hivdata$sex == 2,]$sex <- "female" 
-hivdata[hivdata$sex == 3,]$sex <- "transgender" 
-hivdata[hivdata$sex == 0,]$sex <- "unknown" 
 
-states <- c("act","nsw","nt","qld","sa","tas","vic","wa")
-for(ii in 1:8){
-  hivdata[hivdata$state == ii,]$state <- states[ii]
+
+
+if (dataYear < 2017) {
+  hivdata[hivdata$sex == 1,]$sex <- "male" 
+  hivdata[hivdata$sex == 2,]$sex <- "female" 
+  hivdata[hivdata$sex == 3,]$sex <- "transgender" 
+  hivdata[hivdata$sex == 0,]$sex <- "unknown"
+  
+  states <- c("act","nsw","nt","qld","sa","tas","vic","wa")
+  for(ii in 1:8){
+    hivdata[hivdata$state == ii,]$state <- states[ii]
+  }
+} else {
+  hivdata[hivdata$sex == "Male",]$sex <- "male" 
+  hivdata[hivdata$sex == "Female",]$sex <- "female" 
+  hivdata[hivdata$sex == "Transgender",]$sex <- "transgender" 
+  hivdata[hivdata$sex == "Unknown",]$sex <- "unknown" 
+  
+  hivdata$state <- tolower(hivdata$state)
+  hivdata[hivdata$state == "not reported",]$state <- NA
 }
 
 # Add a classification for linkage to care based on CD4 count variable.
@@ -109,18 +129,17 @@ if (dataYear <= 2013) {
     "no"
   hivdata[!is.na(hivdata$cd4count) & hivdata$yearhiv < 2014, ]$linked <-
     "yes"
-
+  
   hivdata[hivdata$yearhiv >= 2014 & is.na(hivdata$cd4date -
-    hivdata$datediagnosis),]$linked <- "no"
+      hivdata$datediagnosis),]$linked <- "no"
   
   hivdata[hivdata$yearhiv >= 2014 & !is.na(hivdata$cd4date -
-    hivdata$datediagnosis) & (hivdata$cd4date - hivdata$datediagnosis) <=
+      hivdata$datediagnosis) & (hivdata$cd4date - hivdata$datediagnosis) <=
       90,]$linked <- "yes"
   
   hivdata[hivdata$yearhiv >= 2014 & !is.na(hivdata$cd4date -
-    hivdata$datediagnosis) & (hivdata$cd4date - hivdata$datediagnosis) >
+      hivdata$datediagnosis) & (hivdata$cd4date - hivdata$datediagnosis) >
       90,]$linked <- "no"
-  
 }
 
 # Reclassification of exposure to the broad surveillance categories - may need to change manually
@@ -190,14 +209,26 @@ hivdata[hivdata$exposure == "unknown", ]$expgroup <- "unknown"
 # aboriginal variables - keep unknowns as NAs for imputation during the 
 # analysis. 
 
-hivdata$countrygroup <- rep(NA,nrow(hivdata))
-hivdata[which(hivdata$cob == 1100),]$countrygroup <- "australia"
-hivdata[which(hivdata$rob == 9),]$countrygroup <- "bornsea"
-hivdata[which(hivdata$rob == 12),]$countrygroup <- "bornssa"
-hivdata[which(hivdata$rob %in% c(1,2,3,4,5,6,8,10,11)), ]$countrygroup <-
-  "othercob"
-hivdata[which(hivdata$rob == 7 & hivdata$cob != 1100), ]$countrygroup <-
-  "othercob"
+hivdata$countrygroup <- rep(NA, nrow(hivdata))
+hivdata[which(hivdata$cob == 1100), ]$countrygroup <- "australia"
+
+if (dataYear >= 2017) {
+  hivdata[which(hivdata$rob == "SE Asia"), ]$countrygroup <- "bornsea"
+  hivdata[which(hivdata$rob == "SSA"), ]$countrygroup <- "bornssa"
+  hivdata[which(hivdata$rob %in% c("C America", "Caribbean", 
+    "N Africa & ME", "N America", "NE Asia", "NR", "NW Eurpoe", 
+    "S & C Asia", "S & E Europr", "S America")), ]$countrygroup <-
+    "othercob"
+  hivdata[which(hivdata$rob == "Oceania/Anatartica" & 
+      hivdata$cob != 1100), ]$countrygroup <- "othercob"
+} else {
+  hivdata[which(hivdata$rob == 9), ]$countrygroup <- "bornsea"
+  hivdata[which(hivdata$rob == 12), ]$countrygroup <- "bornssa"
+  hivdata[which(hivdata$rob %in% c(1,2,3,4,5,6,8,10,11)), ]$countrygroup <-
+    "othercob"
+  hivdata[which(hivdata$rob == 7 & hivdata$cob != 1100), ]$countrygroup <-
+    "othercob"
+}
 
 hivdata$aboriggroup <- rep(NA,nrow(hivdata))
 
@@ -206,36 +237,33 @@ if (dataYear < 2015) {
     "othercob"
   hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
   hivdata[which(hivdata$cob == 1100 & hivdata$aborig == "Indigenous"),
-          ]$aboriggroup <- "indigenous"
+    ]$aboriggroup <- "indigenous"
   hivdata[which(hivdata$cob == 1100 & hivdata$aborig == "Non indigenous"),
-          ]$aboriggroup <- "non-indigenous"
+    ]$aboriggroup <- "non-indigenous"
 } else if (dataYear == 2015)  {
   hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
     "othercob"
   hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
   hivdata[which(hivdata$cob == 1100 & hivdata$indigenous == "Aboriginal"),
-          ]$aboriggroup <- "indigenous"
+    ]$aboriggroup <- "indigenous"
   hivdata[which(hivdata$cob == 1100 & 
-                  hivdata$indigenous == "Non-Indigenous"),
-          ]$aboriggroup <- "non-indigenous"
+      hivdata$indigenous == "Non-Indigenous"),
+    ]$aboriggroup <- "non-indigenous"
 } else {
   hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
     "othercob"
   hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
   hivdata[which(hivdata$cob == 1100 & hivdata$indig == 1),
-          ]$aboriggroup <- "indigenous"
+    ]$aboriggroup <- "indigenous"
   hivdata[which(hivdata$cob == 1100 & 
-                  hivdata$indigenous != 1),
-          ]$aboriggroup <- "non-indigenous"
+      hivdata$indigenous != 1),
+    ]$aboriggroup <- "non-indigenous"
 }
 
-
-  
 # Save cleaned hivdata
-write.csv(hivdata, file = file.path(cleanDataFolder,
-                              paste0("hivnotifications_clean-",
-                                    toString(dataYear), ".csv")), 
-                              row.names = FALSE)
+write.csv(hivdata, file = file.path(privateDataPath, 
+  paste0("cascadeHIVnotifications-clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
 
 ```
 
@@ -302,11 +330,11 @@ pharmData <- pharmData %>%
 # Finally have it a relatively tidy format so save to output file
 write.csv(pharmData, file = file.path(cleanDataFolder, 
   paste0("pharmdash_HIVpatients", toString(dataYear), 
-  ".csv")), row.names = FALSE)
+    ".csv")), row.names = FALSE)
 
 write.csv(pharmData, file = file.path(cascadeDataFolder, 
   paste0("pharmdash_HIVpatients_clean-", toString(dataYear), 
-  ".csv")), row.names = FALSE)
+    ".csv")), row.names = FALSE)
 
 ```
 
@@ -382,12 +410,12 @@ propNonMSMUndiagMax[is.nan(propNonMSMUndiagMax)] <- NA
 # Put everything in a data frame
 
 projectUndiag <- data.frame(year = undiagMSM$year, 
-                             msm_best = propMSMUndiag, 
-                             msm_lower = propMSMUndiagMin, 
-                             msm_upper = propMSMUndiagMax, 
-                             non_msm_best = propNonMSMUndiag,
-                             non_msm_lower = propNonMSMUndiagMin,
-                             non_msm_upper = propNonMSMUndiagMax)
+  msm_best = propMSMUndiag, 
+  msm_lower = propMSMUndiagMin, 
+  msm_upper = propMSMUndiagMax, 
+  non_msm_best = propNonMSMUndiag,
+  non_msm_lower = propNonMSMUndiagMin,
+  non_msm_upper = propNonMSMUndiagMax)
 
 
 # Write data frame to file 
@@ -441,12 +469,12 @@ propNonMSMdeathsMax[is.nan(propNonMSMdeathsMax)] <- NA
 # Put everything in a data frame
 
 projectDeaths <- data.frame(year = deathsMSM$year, 
-                             msm_best = propMSMdeaths, 
-                             msm_lower = propMSMdeathsMin, 
-                             msm_upper = propMSMdeathsMax, 
-                             non_msm_best = propNonMSMdeaths,
-                             non_msm_lower = propNonMSMdeathsMin,
-                             non_msm_upper = propNonMSMdeathsMax)
+  msm_best = propMSMdeaths, 
+  msm_lower = propMSMdeathsMin, 
+  msm_upper = propMSMdeathsMax, 
+  non_msm_best = propNonMSMdeaths,
+  non_msm_lower = propNonMSMdeathsMin,
+  non_msm_upper = propNonMSMdeathsMax)
 
 
 # Write data frame to file 
@@ -465,7 +493,7 @@ write.csv(projectDeaths, file = file.path(cascadeDataFolder,
 
 # Load the ahod data. Only have it this form for 2013-2014
 if (dataYear %in% c(2014, 2015)) {
-
+  
   ahodData <- read_excel(file.path(dataPath, 
     paste0("ahod", toString(dataYear),".xlsx")))
   
