@@ -25,12 +25,11 @@ LoadLibrary(readxl)
 
 # Key folder paths
 basePath <- file.path(dirname(getwd()))
-absFolder <- file.path(basePath,"data","ABS", "raw") # Folder with raw ABS data
-cleanDataFolder <- file.path(basePath,"data", "ABS") # Where cleaned data goes
+absFolder <- file.path(basePath, "data", "ABS", "raw") # Folder with raw ABS data
+cleanDataFolder <- file.path(basePath, "data", "ABS") # Where cleaned data goes
 
 # Additional cleaned data folders for copies
-cascadeDataFolder <- file.path(basePath,"project_care_cascades", "data",
-  "ABS")
+cascadeDataFolder <- file.path(basePath,"project_care_cascades", "data")
 
 # Source useful functions
 source("TidyLongitudinal.R")
@@ -39,7 +38,7 @@ source("TidyLongitudinal.R")
 states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2016 # Annual data from 2014
+dataYear <- 2017 # Annual data from 2014
 
 ```
 
@@ -193,9 +192,12 @@ two years behind. First year is always 2004.
 # Process NOM departure data - Have to read in separate sheets
 
 # Need to specify years first
-if (dataYear >= 2014) {
+if (dataYear %in% 2014:2016) {
   nomYear <- 2014
+} else if (dataYear >= 2017) {
+  nomYear <- 2017
 }
+
 years <- 2004:nomYear
 
 # Initilize results data frame
