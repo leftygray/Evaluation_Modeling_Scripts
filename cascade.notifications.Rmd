@@ -31,18 +31,13 @@ installation of the R Markdown v2, knitr, and pandoc packages. <!--- To
 produce the Word Document requires saving in a local directory and setting 
 eval = FALSE in the loaddata chunk ---> 
 
-
 ### Script Setup
 
 The following code gets things set up for processing and loads the required
 libraries.
 
 ```{r setup, message = FALSE, tidy = TRUE}
-# Clear workspace
-rm(list=ls()) 
-
-# Set working directory
-# setwd(file.path("/","SVR-NAS","Public","SERP","Cascades","HIV"))
+# Restart R and set working directory to source file location
 
 # Load libraries for data manipulation - they are installed if not already
 # done so
@@ -77,28 +72,23 @@ specify the input and output files.
 ```{r User specifications, tidy = TRUE}
 
 # User specified year
-yearAnalysis <- 2016
+yearAnalysis <- 2017
 
 ```
 
 
 ```{r files, tidy = TRUE}
 # Raw notifications data - MUST REMAIN PRIVATE
-rawDataFile <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades", 
-                         "HIV", "data", "National Registry Data",   
-                         paste0("rawHIVnotifications-", 
-                                toString(yearAnalysis), ".dta"))
+rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
+  "National HIV Registry", "2017", "National", "Hamish & Richard")
+
+# rawDataFile <- file.path(rawDataDirectory, 
+#   paste0("rawHIVnotifications-", toString(yearAnalysis), ".dta"))
+rawDataFile <- file.path(rawDataDirectory, "2017_NHR_FULL - Backup.dta")
 
 # De-identified output file name
-cleanDataFile <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades",  
-                           "HIV", "data", 
-                           paste0("cascadeHIVnotifications-",
-                                  toString(yearAnalysis), 
-                                  ".csv"))
-
-cleanDataFileBP <- file.path("/", "SVR-NAS", "Public", "SERP", "Cascades", 
-                             "HIV", "data", 
-                             paste0("backprojectionHIVnotifications-",                                                 toString(yearAnalysis), ".csv"))
+cleanDataFile <- file.path(rawDataDirectory, 
+  paste0("cascadeHIVnotifications-raw-", toString(yearAnalysis), ".csv"))
 
 ```
 
@@ -115,7 +105,7 @@ The variables required for evaluation modelling are then extracted and
 saved in a de-identified CSV file. <!--- To get the Word Document you need 
 to set eval = FALSE in each chunk --->
 
-```{r loaddata, tidy = TRUE} 
+```{r loaddata, tidy = TRUE, eval = FALSE} 
 #eval = FALSE when running R markdown
 
 # Load the raw data file
@@ -149,18 +139,6 @@ processData <- rawData[,vars]
 
 # Save processed data
 write.csv(processData, file = cleanDataFile, row.names = FALSE)
-
-### Back projection file 
-
-# Select the variables we need for back projection
-varsBP <- c("postcode", "sex", "dob", "cob", "datehiv", "dateaids",
-            "cd4count", "expcode", "dateneg", "dateill", 
-            "dateindet", "previ_diag_overseas") 
-  
-processDataBP <- rawData[,varsBP]
-
-# Save back projection data
-write.csv(processDataBP, file = cleanDataFileBP, row.names = FALSE)
 
 ```
 
