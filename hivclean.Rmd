@@ -216,8 +216,8 @@ if (dataYear >= 2017) {
   hivdata[which(hivdata$rob == "SE Asia"), ]$countrygroup <- "bornsea"
   hivdata[which(hivdata$rob == "SSA"), ]$countrygroup <- "bornssa"
   hivdata[which(hivdata$rob %in% c("C America", "Caribbean", 
-    "N Africa & ME", "N America", "NE Asia", "NR", "NW Eurpoe", 
-    "S & C Asia", "S & E Europr", "S America")), ]$countrygroup <-
+    "N Africa & ME", "N America", "NE Asia", "NW Europe", 
+    "S & C Asia", "S & E Europe", "S America")), ]$countrygroup <-
     "othercob"
   hivdata[which(hivdata$rob == "Oceania/Anatartica" & 
       hivdata$cob != 1100), ]$countrygroup <- "othercob"

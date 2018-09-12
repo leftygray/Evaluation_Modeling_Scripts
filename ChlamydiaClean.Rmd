@@ -44,7 +44,7 @@ cascadeDataFolder <- file.path(basePath,"project_care_cascades",
   "Chlamydia", "data")
 
 # Primary script parameters - data year 
-dataYear <- 2014
+dataYear <- 2017
 
 ```
 
@@ -214,7 +214,6 @@ if (dataYear == 2014) {
 }
 ```
 
-
 ## Chlamydia tests
 
 ```{r tests}
@@ -322,7 +321,6 @@ write.csv(finalTests, file = file.path(cleanDataFolder,
 
 ```
 
-
 ## Chlamydia re-testing data (ACCESS data)
 
 The following chunk cleans up data on the numbers of people re-tested for 
@@ -331,200 +329,333 @@ and in general practise. This data is saved in long format. From this data
 proportions and the lower and upper bounds based on 95% confidence
 intervals are calculated.  
 
-```{r re-testing ACCESS}
-# ACCESS re-testing data
-dataStartYear <- 2007
-mergeRemote <-TRUE # add remote and regional data
-
-# For ACCESS re-testing data do we want a split in male re-tests into MSM
-# and non-MSM
-msmSplit <- ifelse(dataYear >= 2016, TRUE, FALSE)
-# msmSplit <- FALSE # to overwrite
-
-# Raw testing file
-if (msmSplit) {
-  rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
-    toString(dataYear), "_MSM.xlsx"))
-} else {
-  rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
-    toString(dataYear), ".xlsx"))
-}
-
-# Load raw re-testing data
-chlamRetest <- read_excel(rawDataTreatment, sheet = 1, skip = 3,
-  col_names = FALSE)
-
-# For some reason 7th column is read as char
-chlamRetest$X__7 <- as.numeric(chlamRetest$X__7)
-
-# Clean up data ----------------------------------------------------------
-
-colnames(chlamRetest)[1] <- "setting"
-colnames(chlamRetest)[2] <- "variable"
-
-# Manually relable columns by all, male and female data
-dataYears <- dataStartYear:(dataStartYear + 
-    (dataYear - dataStartYear))
-numDataYears <- length(dataYears)
-
-colnames(chlamRetest)[3:(3 + numDataYears - 1)] <- 
-  paste0(dataYears, "all")
-if (msmSplit) {
-  colnames(chlamRetest)[(3 + numDataYears + 1):(3 + 2 * numDataYears)] <- 
-    paste0(dataYears, "non_msm")
-  colnames(chlamRetest)[(3 + 2 * numDataYears + 2):
-      (3 + 3 * numDataYears + 1)] <- paste0(dataYears,
-        "msm")
-  colnames(chlamRetest)[(3 + 3 * numDataYears + 3):
-      (3 + 4 * numDataYears + 2)] <- paste0(dataYears,
-        "female")
-} else {
-  colnames(chlamRetest)[(3 + numDataYears + 1):(3 + 2 * numDataYears)] <- 
-    paste0(dataYears, "male")
-  colnames(chlamRetest)[(3 + 2 * numDataYears + 2):
-      (3 + 3 * numDataYears + 1)] <- paste0(dataYears,
-        "female")
-}
-
-# Get rid of excess rows and columns
-chlamRetest <- chlamRetest %>% 
-  select(-contains("X_")) %>%
-  filter(!is.na(variable))
-
-# Just keep the data and calculate proportions separately
-chlamRetest <- chlamRetest %>%
-  filter(variable %in% c("# of diagnoses", "# re-tested in 42-180 days"))
-
-# clean variable names
-chlamRetest[chlamRetest$variable == "# of diagnoses", ]$variable <-
-  "diagnoses"
-chlamRetest[chlamRetest$variable == "# re-tested in 42-180 days",
-  ]$variable <- "retested"
-
-# Pull out setting and copy
-settingNames <- filter(chlamRetest, !is.na(setting))$setting
-chlamRetest[is.na(chlamRetest$setting), ]$setting <- settingNames
-
-# Split setting names into two variables
-settingList <- strsplit(chlamRetest$setting, " - ")
-chlamRetest$context <- sapply(settingList, function(x) x[1])
-chlamRetest$region <- sapply(settingList, function(x) x[2])
-
-chlamRetest <- chlamRetest %>%
-  select(-setting) %>%
-  select(region, context, everything())
-
-# Rename context variable
-chlamRetest[chlamRetest$context == "Sexual health network", ]$context <-
-  "shc"
-chlamRetest[chlamRetest$context == "GP network", ]$context <-
-  "gp"
-
-# Convert to long format -------------------------------------------------
-chlamRetest <- chlamRetest %>%
-  gather("yearsex", "number", 4:ncol(chlamRetest))
-
-# Split year and sex
-yearsexYear <- as.character(sapply(chlamRetest$yearsex, 
-  function(s) substr(s, 1, 4)))
-yearsexSex <- as.character(sapply(chlamRetest$yearsex, 
-  function(s) substr(s, 5, nchar(s))))
-
-chlamRetest$sex <- yearsexSex
-chlamRetest$year <- yearsexYear
-
-# Final reformat in preparation for calculations -------------------------
-
-chlamRetest <- chlamRetest %>%
-  select(-yearsex) %>%
-  spread(variable, number)
-
-if (mergeRemote) {
-  # Add another set of rows for regional+remote data
-  mergedData <-  filter(chlamRetest, region == "regional") # initialize
-  mergedData$region <- "regional+remote" # change region name
+```{r re-testing ACCESS - Before 2017}
+if (dataYear < 2017) {
+  # ACCESS re-testing data
+  dataStartYear <- 2007
+  mergeRemote <-TRUE # add remote and regional data
   
-  # Add regional and remote data
-  mergedData$diagnoses <- filter(chlamRetest, 
-    region == "regional")$diagnoses +
-    filter(chlamRetest, region == "remote")$diagnoses
-  mergedData$retested <- filter(chlamRetest, 
-    region == "regional")$retested +
-    filter(chlamRetest, region == "remote")$retested
+  # For ACCESS re-testing data do we want a split in male re-tests into MSM
+  # and non-MSM
+  msmSplit <- ifelse(dataYear == 2016, TRUE, FALSE)
+  # msmSplit <- FALSE # to overwrite
   
-  # Add to chlamRetest
-  chlamRetest <- bind_rows(chlamRetest, mergedData)
+  # Raw testing file
+  if (msmSplit) {
+    rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
+      toString(dataYear), "_MSM.xlsx"))
+  } else {
+    rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
+      toString(dataYear), ".xlsx"))
+  }
   
-}
-
-# Replace NAs with zeros
-chlamRetest[is.na(chlamRetest)] <- 0
-
-# Calculate overall male if we have split by MSM
-if (msmSplit) {
-  maleData <- chlamRetest %>%
-    filter(sex %in% c("msm", "non_msm")) %>%
-    group_by(region, context, year) %>%
-    summarise(sex = "male",
-      diagnoses = sum(diagnoses),
-      retested = sum(retested)) %>%
-    ungroup()
+  # Load raw re-testing data
+  chlamRetest <- read_excel(rawDataTreatment, sheet = 1, skip = 3,
+    col_names = FALSE)
   
-  # Add to all data
+  # For some reason 7th column is read as char
+  chlamRetest$X__7 <- as.numeric(chlamRetest$X__7)
+  
+  # Clean up data ----------------------------------------------------------
+  
+  colnames(chlamRetest)[1] <- "setting"
+  colnames(chlamRetest)[2] <- "variable"
+  
+  # Manually relable columns by all, male and female data
+  dataYears <- dataStartYear:(dataStartYear + 
+      (dataYear - dataStartYear))
+  numDataYears <- length(dataYears)
+  
+  colnames(chlamRetest)[3:(3 + numDataYears - 1)] <- 
+    paste0(dataYears, "all")
+  if (msmSplit) {
+    colnames(chlamRetest)[(3 + numDataYears + 1):(3 + 2 * numDataYears)] <- 
+      paste0(dataYears, "non_msm")
+    colnames(chlamRetest)[(3 + 2 * numDataYears + 2):
+        (3 + 3 * numDataYears + 1)] <- paste0(dataYears,
+          "msm")
+    colnames(chlamRetest)[(3 + 3 * numDataYears + 3):
+        (3 + 4 * numDataYears + 2)] <- paste0(dataYears,
+          "female")
+  } else {
+    colnames(chlamRetest)[(3 + numDataYears + 1):(3 + 2 * numDataYears)] <- 
+      paste0(dataYears, "male")
+    colnames(chlamRetest)[(3 + 2 * numDataYears + 2):
+        (3 + 3 * numDataYears + 1)] <- paste0(dataYears,
+          "female")
+  }
+  
+  # Get rid of excess rows and columns
+  chlamRetest <- chlamRetest %>% 
+    select(-contains("X_")) %>%
+    filter(!is.na(variable))
+  
+  # Just keep the data and calculate proportions separately
   chlamRetest <- chlamRetest %>%
-    bind_rows(maleData) %>%
-    arrange(region, context, year)
+    filter(variable %in% c("# of diagnoses", "# re-tested in 42-180 days"))
   
-}
-
-# Now calculate proportion retest and lower and upper bound --------------
-chlamRetest <- chlamRetest %>%
-  mutate(prop_retested = retested / diagnoses)
-
-# Need to remove NAs to calculate upper and lower 95% confidence intervals
-# using prop.test
-
-LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
-UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
-
-indices <- (!is.na(chlamRetest$retested) &
-  (chlamRetest$diagnoses != 0))
-
-propLower <- mapply(LowerProp, chlamRetest$retested[indices],
-  chlamRetest$diagnoses[indices])
-propUpper <- mapply(UpperProp, chlamRetest$retested[indices],
-  chlamRetest$diagnoses[indices])
-
-chlamRetest$prop_lower <- NA
-chlamRetest$prop_upper <- NA
-
-chlamRetest[indices, ]$prop_lower <- propLower
-chlamRetest[indices, ]$prop_upper <- propUpper
-
-# Extract data year and write to file ------------------------------------
-
-chlamRetest <- chlamRetest %>%
-  filter(year == dataYear)
-
-# Write to file 
-if (msmSplit) {
-  write.csv(chlamRetest, file = file.path(cleanDataFolder,
-    paste0("retestsAccess_clean-", toString(dataYear), "_MSM.csv")),
-    row.names = FALSE)
+  # clean variable names
+  chlamRetest[chlamRetest$variable == "# of diagnoses", ]$variable <-
+    "diagnoses"
+  chlamRetest[chlamRetest$variable == "# re-tested in 42-180 days",
+    ]$variable <- "retested"
   
-  write.csv(chlamRetest, file = file.path(cascadeDataFolder,
-    paste0("retestsAccess_clean-", toString(dataYear), "_MSM.csv")),
-    row.names = FALSE)
-} else {
-  write.csv(chlamRetest, file = file.path(cleanDataFolder,
-    paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
-    row.names = FALSE)
+  # Pull out setting and copy
+  settingNames <- filter(chlamRetest, !is.na(setting))$setting
+  chlamRetest[is.na(chlamRetest$setting), ]$setting <- settingNames
   
-  write.csv(chlamRetest, file = file.path(cascadeDataFolder,
-    paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
-    row.names = FALSE)
+  # Split setting names into two variables
+  settingList <- strsplit(chlamRetest$setting, " - ")
+  chlamRetest$context <- sapply(settingList, function(x) x[1])
+  chlamRetest$region <- sapply(settingList, function(x) x[2])
+  
+  chlamRetest <- chlamRetest %>%
+    select(-setting) %>%
+    select(region, context, everything())
+  
+  # Rename context variable
+  chlamRetest[chlamRetest$context == "Sexual health network", ]$context <-
+    "shc"
+  chlamRetest[chlamRetest$context == "GP network", ]$context <-
+    "gp"
+  
+  # Convert to long format -------------------------------------------------
+  chlamRetest <- chlamRetest %>%
+    gather("yearsex", "number", 4:ncol(chlamRetest))
+  
+  # Split year and sex
+  yearsexYear <- as.character(sapply(chlamRetest$yearsex, 
+    function(s) substr(s, 1, 4)))
+  yearsexSex <- as.character(sapply(chlamRetest$yearsex, 
+    function(s) substr(s, 5, nchar(s))))
+  
+  chlamRetest$sex <- yearsexSex
+  chlamRetest$year <- yearsexYear
+  
+  # Final reformat in preparation for calculations -------------------------
+  
+  chlamRetest <- chlamRetest %>%
+    select(-yearsex) %>%
+    spread(variable, number)
+  
+  if (mergeRemote) {
+    # Add another set of rows for regional+remote data
+    mergedData <-  filter(chlamRetest, region == "regional") # initialize
+    mergedData$region <- "regional+remote" # change region name
+    
+    # Add regional and remote data
+    mergedData$diagnoses <- filter(chlamRetest, 
+      region == "regional")$diagnoses +
+      filter(chlamRetest, region == "remote")$diagnoses
+    mergedData$retested <- filter(chlamRetest, 
+      region == "regional")$retested +
+      filter(chlamRetest, region == "remote")$retested
+    
+    # Add to chlamRetest
+    chlamRetest <- bind_rows(chlamRetest, mergedData)
+    
+  }
+  
+  # Replace NAs with zeros
+  chlamRetest[is.na(chlamRetest)] <- 0
+  
+  # Calculate overall male if we have split by MSM
+  if (msmSplit) {
+    maleData <- chlamRetest %>%
+      filter(sex %in% c("msm", "non_msm")) %>%
+      group_by(region, context, year) %>%
+      summarise(sex = "male",
+        diagnoses = sum(diagnoses),
+        retested = sum(retested)) %>%
+      ungroup()
+    
+    # Add to all data
+    chlamRetest <- chlamRetest %>%
+      bind_rows(maleData) %>%
+      arrange(region, context, year)
+    
+  }
+  
+  # Now calculate proportion retest and lower and upper bound --------------
+  chlamRetest <- chlamRetest %>%
+    mutate(prop_retested = retested / diagnoses)
+  
+  # Need to remove NAs to calculate upper and lower 95% confidence intervals
+  # using prop.test
+  
+  LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
+  UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
+  
+  indices <- (!is.na(chlamRetest$retested) &
+      (chlamRetest$diagnoses != 0))
+  
+  propLower <- mapply(LowerProp, chlamRetest$retested[indices],
+    chlamRetest$diagnoses[indices])
+  propUpper <- mapply(UpperProp, chlamRetest$retested[indices],
+    chlamRetest$diagnoses[indices])
+  
+  chlamRetest$prop_lower <- NA
+  chlamRetest$prop_upper <- NA
+  
+  chlamRetest[indices, ]$prop_lower <- propLower
+  chlamRetest[indices, ]$prop_upper <- propUpper
+  
+  # Extract data year and write to file ------------------------------------
+  
+  chlamRetest <- chlamRetest %>%
+    filter(year == dataYear)
+  
+  # Write to file 
+  if (msmSplit) {
+    write.csv(chlamRetest, file = file.path(cleanDataFolder,
+      paste0("retestsAccess_clean-", toString(dataYear), "_MSM.csv")),
+      row.names = FALSE)
+    
+    write.csv(chlamRetest, file = file.path(cascadeDataFolder,
+      paste0("retestsAccess_clean-", toString(dataYear), "_MSM.csv")),
+      row.names = FALSE)
+  } else {
+    write.csv(chlamRetest, file = file.path(cleanDataFolder,
+      paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
+      row.names = FALSE)
+    
+    write.csv(chlamRetest, file = file.path(cascadeDataFolder,
+      paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
+      row.names = FALSE)
+  }
 }
 ```
+
+```{r re-testing ACCESS - 2017}
+if (dataYear == 2017) {
+  # ACCESS re-testing data
+  dataStartYear <- 2009
+  mergeRemote <-TRUE # add remote and regional data
+  
+  # Raw testing file
+  rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
+    toString(dataYear), ".xlsx"))
+  
+  # Load raw re-testing data
+  chlamRetest <- read_excel(rawDataTreatment, sheet = 5, skip = 4,
+    col_names = FALSE)
+  
+  # Clean up data ----------------------------------------------------------
+  # Lots of hardcoding
+  chlamRetest <- chlamRetest[63:89, 1:24]
+
+  # Separate by sex and context
+  chlamRetestmshc <- chlamRetest %>% 
+    select(1:4) %>%
+    rename(year = X__1, region = X__2, retested = X__3, diagnoses = X__4) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "male", context = "shc") %>%
+    select(region, context, sex, year, diagnoses, retested) 
+  
+  chlamRetestfshc <- chlamRetest %>% 
+    select(7:10) %>%
+    rename(year = X__7, region = X__8, retested = X__9, diagnoses = X__10) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "female", context = "shc") %>%
+    select(region, context, sex, year, diagnoses, retested)
+  
+  chlamRetestmgp <- chlamRetest %>% 
+    select(13:16) %>%
+    rename(year = X__13, region = X__14, retested = X__15, diagnoses = X__16) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "male", context = "gp") %>%
+    select(region, context, sex, year, diagnoses, retested)
+  
+  chlamRetestfgp <- chlamRetest %>% 
+    select(19:22) %>%
+    rename(year = X__19, region = X__20, retested = X__21, diagnoses = X__22) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "female", context = "gp") %>%
+    select(region, context, sex, year, diagnoses, retested)
+  
+  # Merge and filter out 2017 data
+  chlamRetest <- bind_rows(chlamRetestmshc, chlamRetestfshc, 
+    chlamRetestmgp, chlamRetestfgp) %>%
+    filter(year == 2017) 
+  
+  # Add zeros for remote GPs
+  chlamRetest <- chlamRetest %>%
+    bind_rows(data_frame(region = "remote", context = "gp", 
+      sex = c("all", "male", "female"), year = 2017, diagnoses = 0, 
+      retested = 0))
+  
+  # Do overall calculations
+  chlamRetest <- chlamRetest %>%
+    group_by(region, context, year) %>%
+    summarise(diagnoses = sum(diagnoses), retested = sum(retested)) %>%
+    ungroup() %>%
+    mutate(sex = "all") %>%
+    select(region, context, sex, year, diagnoses, retested) %>%
+    bind_rows(chlamRetest) %>%
+    arrange(region, context, sex)
+  
+  if (mergeRemote) {
+    # Add another set of rows for regional+remote data
+    chlamRetest <- chlamRetest %>%
+      filter(region %in% c("regional", "remote")) %>%
+      group_by(context, year, sex) %>%
+      summarise(diagnoses = sum(diagnoses), retested = sum(retested)) %>%
+      ungroup() %>%
+      mutate(region = "regional+remote") %>%
+      select(region, context, sex, year, diagnoses, retested) %>%
+      bind_rows(chlamRetest, .)
+  }
+ 
+  # Now calculate proportion retest and lower and upper bound --------------
+  chlamRetest <- chlamRetest %>%
+    mutate(prop_retested = retested / diagnoses)
+  
+  # Need to remove NAs to calculate upper and lower 95% confidence intervals
+  # using prop.test
+  
+  LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
+  UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
+  
+  indices <- (!is.na(chlamRetest$retested) &
+      (chlamRetest$diagnoses != 0))
+  
+  propLower <- mapply(LowerProp, chlamRetest$retested[indices],
+    chlamRetest$diagnoses[indices])
+  propUpper <- mapply(UpperProp, chlamRetest$retested[indices],
+    chlamRetest$diagnoses[indices])
+  
+  chlamRetest$prop_lower <- NA
+  chlamRetest$prop_upper <- NA
+  
+  chlamRetest[indices, ]$prop_lower <- propLower
+  chlamRetest[indices, ]$prop_upper <- propUpper
+  
+  # Replace 0/0 calculation with NA
+  chlamRetest[!indices, ]$prop_retested <- NA
+  
+  # Save SHC data for range
+  chlamRetestRange <- chlamRetest %>% 
+    filter(context == "shc", region != "regional+remote") %>%
+    mutate(period = "42-180") %>%
+    select(region, context, sex, year, diagnoses, period, retested, 
+      prop_retested, prop_lower, prop_upper)
+
+  # Write to file 
+  write.csv(chlamRetest, file = file.path(cleanDataFolder,
+    paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
+    row.names = FALSE)
+  
+  write.csv(chlamRetest, file = file.path(cascadeDataFolder,
+    paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
+    row.names = FALSE)
+  
+}
+```
+
 
 ```{r retesting ACCEPt}
 # Read in available ACCEPt data. We use the control group data on the 
@@ -768,189 +899,303 @@ write.csv(retestNSWgp, file = file.path(cascadeDataFolder,
 
 ```
 
-```{r retesting range}
-# This chunk cleans the data for different periods for re-testing from the
-# ACCESS sexual health clinic data. 
-
-dataStartYear <- 2007
-
-# Raw testing file
-if (msmSplit) {
-  rawDataTreatment <- file.path(dataPath, 
-    paste0("access_chlamydia_shc_data-", toString(dataYear), "_MSM.xlsx"))
-} else {
-  rawDataTreatment <- file.path(dataPath, 
-    paste0("access_chlamydia_shc_data-", toString(dataYear), ".xlsx"))
-}
-
-# Load raw re-testing data for 15-29 year olds in NSW GPs
-retestVariation <- read_excel(rawDataTreatment, sheet = 1, skip = 3,
-  col_names = FALSE)
-
-# Clean up data ----------------------------------------------------------
-
-colnames(retestVariation)[1] <- "setting"
-colnames(retestVariation)[2] <- "variable"
-
-# Manually relable columns by all, male and female data
-dataYears <- dataStartYear:(dataStartYear + (dataYear - dataStartYear))
-numDataYears <- length(dataYears)
-
-colnames(retestVariation)[3:(3 + numDataYears - 1)] <- 
-  paste0(dataYears, "all")
-if (msmSplit) {
-  colnames(retestVariation)[(3 + numDataYears + 1):
-      (3 + 2 * numDataYears)] <- paste0(dataYears, "non_msm")
-  colnames(retestVariation)[(3 + 2 * numDataYears + 2):
-      (3 + 3 * numDataYears + 1)] <- paste0(dataYears, "msm")
-  colnames(retestVariation)[(3 + 3 * numDataYears + 3):
-      (3 + 4 * numDataYears + 2)] <- paste0(dataYears, "females")
-} else {
-  colnames(retestVariation)[(3 + numDataYears + 1):
-      (3 + 2 * numDataYears)] <- paste0(dataYears, "males")
-  colnames(retestVariation)[(3 + 2 * numDataYears + 2):
-      (3 + 3 * numDataYears + 1)] <- paste0(dataYears, "females")
-}
-
-# Get rid of excess rows and columns
-retestVariation <- retestVariation %>% 
-  select(-contains("X_")) %>%
-  filter(!is.na(variable))
-
-# Just keep the data and calculate proportions separately
-retestVariation <- retestVariation %>%
-  filter(variable %in% c("# of diagnoses", "# re-tested in 42-180 days",
-    "# re-tested in 42-120 days",
-    "# re-tested in 7-180 days"))
-
-# clean variable names
-retestVariation[retestVariation$variable == "# of diagnoses", 
-  ]$variable <- "diagnoses"
-retestVariation[retestVariation$variable == "# re-tested in 42-180 days",
-  ]$variable <- "retested42-180"
-retestVariation[retestVariation$variable == "# re-tested in 42-120 days",
-  ]$variable <- "retested42-120"
-retestVariation[retestVariation$variable == "# re-tested in 7-180 days",
-  ]$variable <- "retested7-180"
-
-# Pull out setting and copy
-settingNames <- filter(retestVariation, !is.na(setting))$setting
-retestVariation[is.na(retestVariation$setting), ]$setting <- settingNames
-
-# Split setting names into two variables
-settingList <- strsplit(retestVariation$setting, " - ")
-retestVariation$context <- sapply(settingList, function(x) x[1])
-retestVariation$region <- sapply(settingList, function(x) x[2])
-
-retestVariation <- retestVariation %>%
-  select(-setting) %>%
-  select(region, context, everything())
-
-# Rename context variable
-retestVariation[retestVariation$context == "Sexual health network", 
-  ]$context <- "shc"
-
-# Convert to long format -------------------------------------------------
-retestVariation <- retestVariation %>%
-  gather("yearsex", "number", 4:ncol(retestVariation))
-
-# Split year and sex
-yearsexYear <- as.character(sapply(retestVariation$yearsex, 
-  function(s) substr(s, 1, 4)))
-yearsexSex <- as.character(sapply(retestVariation$yearsex, 
-  function(s) substr(s, 5, nchar(s))))
-
-retestVariation$sex <- yearsexSex
-retestVariation$year <- yearsexYear
-
-# Final reformat in preparation for calculations -------------------------
-
-retestVariation <- retestVariation %>%
-  select(-yearsex) %>%
-  distinct() %>%
-  spread(variable, number)
-
-# Reformat retesting period
-retestVariation <- retestVariation %>%
-  rename(`42-120` = `retested42-120`, `42-180` = `retested42-180`,
-    `7-180` = `retested7-180`) %>%
-  gather("period", "retested", 6:8) %>%
-  mutate(retested = as.numeric(retested),
-    diagnoses = as.numeric(diagnoses))
-
-# Replace NAs with zeros
-retestVariation[is.na(retestVariation)] <- 0
-
-# Calculate overall male if we have split by MSM
-if (msmSplit) {
-  maleData <- retestVariation %>%
-    filter(sex %in% c("msm", "non_msm")) %>%
-    group_by(region, context, year, period) %>%
-    summarise(sex = "male",
-      diagnoses = sum(diagnoses),
-      retested = sum(retested)) %>%
-    ungroup()
+```{r Retesting range - Before 2017}
+if (dataYear < 2017) {
+  # This chunk cleans the data for different periods for re-testing from the
+  # ACCESS sexual health clinic data. 
   
-  # Add to all data
+  dataStartYear <- 2007
+  
+  # Raw testing file
+  if (msmSplit) {
+    rawDataTreatment <- file.path(dataPath, 
+      paste0("access_chlamydia_shc_data-", toString(dataYear), "_MSM.xlsx"))
+  } else {
+    rawDataTreatment <- file.path(dataPath, 
+      paste0("access_chlamydia_shc_data-", toString(dataYear), ".xlsx"))
+  }
+  
+  # Load raw re-testing data for 15-29 year olds in NSW GPs
+  retestVariation <- read_excel(rawDataTreatment, sheet = 1, skip = 3,
+    col_names = FALSE)
+  
+  # Clean up data ----------------------------------------------------------
+  
+  colnames(retestVariation)[1] <- "setting"
+  colnames(retestVariation)[2] <- "variable"
+  
+  # Manually relable columns by all, male and female data
+  dataYears <- dataStartYear:(dataStartYear + (dataYear - dataStartYear))
+  numDataYears <- length(dataYears)
+  
+  colnames(retestVariation)[3:(3 + numDataYears - 1)] <- 
+    paste0(dataYears, "all")
+  if (msmSplit) {
+    colnames(retestVariation)[(3 + numDataYears + 1):
+        (3 + 2 * numDataYears)] <- paste0(dataYears, "non_msm")
+    colnames(retestVariation)[(3 + 2 * numDataYears + 2):
+        (3 + 3 * numDataYears + 1)] <- paste0(dataYears, "msm")
+    colnames(retestVariation)[(3 + 3 * numDataYears + 3):
+        (3 + 4 * numDataYears + 2)] <- paste0(dataYears, "females")
+  } else {
+    colnames(retestVariation)[(3 + numDataYears + 1):
+        (3 + 2 * numDataYears)] <- paste0(dataYears, "males")
+    colnames(retestVariation)[(3 + 2 * numDataYears + 2):
+        (3 + 3 * numDataYears + 1)] <- paste0(dataYears, "females")
+  }
+  
+  # Get rid of excess rows and columns
+  retestVariation <- retestVariation %>% 
+    select(-contains("X_")) %>%
+    filter(!is.na(variable))
+  
+  # Just keep the data and calculate proportions separately
   retestVariation <- retestVariation %>%
-    bind_rows(maleData) %>%
-    arrange(region, context, year, period)
+    filter(variable %in% c("# of diagnoses", "# re-tested in 42-180 days",
+      "# re-tested in 42-120 days",
+      "# re-tested in 7-180 days"))
   
+  # clean variable names
+  retestVariation[retestVariation$variable == "# of diagnoses", 
+    ]$variable <- "diagnoses"
+  retestVariation[retestVariation$variable == "# re-tested in 42-180 days",
+    ]$variable <- "retested42-180"
+  retestVariation[retestVariation$variable == "# re-tested in 42-120 days",
+    ]$variable <- "retested42-120"
+  retestVariation[retestVariation$variable == "# re-tested in 7-180 days",
+    ]$variable <- "retested7-180"
+  
+  # Pull out setting and copy
+  settingNames <- filter(retestVariation, !is.na(setting))$setting
+  retestVariation[is.na(retestVariation$setting), ]$setting <- settingNames
+  
+  # Split setting names into two variables
+  settingList <- strsplit(retestVariation$setting, " - ")
+  retestVariation$context <- sapply(settingList, function(x) x[1])
+  retestVariation$region <- sapply(settingList, function(x) x[2])
+  
+  retestVariation <- retestVariation %>%
+    select(-setting) %>%
+    select(region, context, everything())
+  
+  # Rename context variable
+  retestVariation[retestVariation$context == "Sexual health network", 
+    ]$context <- "shc"
+  
+  # Convert to long format -------------------------------------------------
+  retestVariation <- retestVariation %>%
+    gather("yearsex", "number", 4:ncol(retestVariation))
+  
+  # Split year and sex
+  yearsexYear <- as.character(sapply(retestVariation$yearsex, 
+    function(s) substr(s, 1, 4)))
+  yearsexSex <- as.character(sapply(retestVariation$yearsex, 
+    function(s) substr(s, 5, nchar(s))))
+  
+  retestVariation$sex <- yearsexSex
+  retestVariation$year <- yearsexYear
+  
+  # Final reformat in preparation for calculations -------------------------
+  
+  retestVariation <- retestVariation %>%
+    select(-yearsex) %>%
+    distinct() %>%
+    spread(variable, number)
+  
+  # Reformat retesting period
+  retestVariation <- retestVariation %>%
+    rename(`42-120` = `retested42-120`, `42-180` = `retested42-180`,
+      `7-180` = `retested7-180`) %>%
+    gather("period", "retested", 6:8) %>%
+    mutate(retested = as.numeric(retested),
+      diagnoses = as.numeric(diagnoses))
+  
+  # Replace NAs with zeros
+  retestVariation[is.na(retestVariation)] <- 0
+  
+  # Calculate overall male if we have split by MSM
+  if (msmSplit) {
+    maleData <- retestVariation %>%
+      filter(sex %in% c("msm", "non_msm")) %>%
+      group_by(region, context, year, period) %>%
+      summarise(sex = "male",
+        diagnoses = sum(diagnoses),
+        retested = sum(retested)) %>%
+      ungroup()
+    
+    # Add to all data
+    retestVariation <- retestVariation %>%
+      bind_rows(maleData) %>%
+      arrange(region, context, year, period)
+    
+  }
+  
+  # Now calculate proportion retest and lower and upper bound --------------
+  retestVariation <- retestVariation %>%
+    mutate(prop_retested = retested / diagnoses)
+  
+  # Need to remove NAs to calculate upper and lower 95% confidence intervals
+  # using prop.test
+  
+  LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
+  UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
+  
+  qcal <- function(x, y) round(100*c(x/y, LowerProp(x, y), UpperProp(x, y)),
+    digits = 1)
+  
+  indices <- (!is.na(retestVariation$retested) &
+      (retestVariation$diagnoses != 0))
+  
+  propLower <- mapply(LowerProp, retestVariation$retested[indices],
+    retestVariation$diagnoses[indices])
+  propUpper <- mapply(UpperProp, retestVariation$retested[indices],
+    retestVariation$diagnoses[indices])
+  
+  retestVariation$prop_lower <- NA
+  retestVariation$prop_upper <- NA
+  
+  retestVariation[indices, ]$prop_lower <- propLower
+  retestVariation[indices, ]$prop_upper <- propUpper
+  
+  retestVariation[is.na(retestVariation)] <- 0
+  
+  # Extract data year and write to file ------------------------------------
+  
+  retestVariation <- retestVariation %>%
+    filter(year == dataYear)
+  
+  # Write to file
+  if (msmSplit) {
+    write.csv(retestVariation, file = file.path(cleanDataFolder,
+      paste0("chlamRetestVariation_clean-", toString(dataYear), "_MSM.csv")),
+      row.names = FALSE)
+    
+    write.csv(retestVariation, file = file.path(cascadeDataFolder,
+      paste0("chlamRetestVariation_clean-", toString(dataYear), "_MSM.csv")),
+      row.names = FALSE)
+    
+  } else {
+    write.csv(retestVariation, file = file.path(cleanDataFolder,
+      paste0("chlamRetestVariation_clean-", toString(dataYear), ".csv")),
+      row.names = FALSE)
+    
+    write.csv(retestVariation, file = file.path(cascadeDataFolder,
+      paste0("chlamRetestVariation_clean-", toString(dataYear), ".csv")),
+      row.names = FALSE)
+  }
 }
-
-# Now calculate proportion retest and lower and upper bound --------------
-retestVariation <- retestVariation %>%
-  mutate(prop_retested = retested / diagnoses)
-
-# Need to remove NAs to calculate upper and lower 95% confidence intervals
-# using prop.test
-
-LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
-UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
-
-qcal <- function(x, y) round(100*c(x/y, LowerProp(x, y), UpperProp(x, y)),
-  digits = 1)
-
-indices <- (!is.na(retestVariation$retested) &
-  (retestVariation$diagnoses != 0))
-
-propLower <- mapply(LowerProp, retestVariation$retested[indices],
-  retestVariation$diagnoses[indices])
-propUpper <- mapply(UpperProp, retestVariation$retested[indices],
-  retestVariation$diagnoses[indices])
-
-retestVariation$prop_lower <- NA
-retestVariation$prop_upper <- NA
-
-retestVariation[indices, ]$prop_lower <- propLower
-retestVariation[indices, ]$prop_upper <- propUpper
-
-retestVariation[is.na(retestVariation)] <- 0
-
-# Extract data year and write to file ------------------------------------
-
-retestVariation <- retestVariation %>%
-  filter(year == dataYear)
-
-# Write to file
-if (msmSplit) {
-  write.csv(retestVariation, file = file.path(cleanDataFolder,
-    paste0("chlamRetestVariation_clean-", toString(dataYear), "_MSM.csv")),
-    row.names = FALSE)
-  
-  write.csv(retestVariation, file = file.path(cascadeDataFolder,
-    paste0("chlamRetestVariation_clean-", toString(dataYear), "_MSM.csv")),
-    row.names = FALSE)
-  
-} else {
-  write.csv(retestVariation, file = file.path(cleanDataFolder,
-    paste0("chlamRetestVariation_clean-", toString(dataYear), ".csv")),
-    row.names = FALSE)
-  
-  write.csv(retestVariation, file = file.path(cascadeDataFolder,
-    paste0("chlamRetestVariation_clean-", toString(dataYear), ".csv")),
-    row.names = FALSE)
-}
-
 ```
 
+```{r Retesting range - 2017}
+if (dataYear == 2017) {
+  # This chunk cleans the data for different periods for re-testing from the
+  # ACCESS sexual health clinic data. 
+ # ACCESS re-testing data
+  dataStartYear <- 2009
+  mergeRemote <-TRUE # add remote and regional data
+  
+  # Raw testing file
+  rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
+    toString(dataYear), ".xlsx"))
+  
+  # Load raw re-testing data
+  chlamRetestSHC <- read_excel(rawDataTreatment, sheet = 5, skip = 4,
+    col_names = FALSE)
+  
+  # Clean up data ----------------------------------------------------------
+  # Lots of hardcoding
+  chlamRetestSHC120 <- chlamRetestSHC[1:27, 1:10]
+  chlamRetestSHC7 <- chlamRetestSHC[32:58, 1:10]
+
+  # Separate by sex and context
+  chlamRetest120m <- chlamRetestSHC120 %>% 
+    select(1:4) %>%
+    rename(year = X__1, region = X__2, retested = X__3, diagnoses = X__4) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "male", context = "shc", period = "42-120") %>%
+    select(region, context, sex, year, diagnoses, period, retested)
+  
+  chlamRetest120f <- chlamRetestSHC120 %>% 
+    select(6:9) %>%
+    rename(year = X__6, region = X__7, retested = X__8, diagnoses = X__9) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "female", context = "shc", period = "42-120") %>%
+    select(region, context, sex, year, diagnoses, period, retested)
+  
+  chlamRetest7m <- chlamRetestSHC7 %>% 
+    select(1:4) %>%
+    rename(year = X__1, region = X__2, retested = X__3, diagnoses = X__4) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "male", context = "shc", period = "7-180") %>%
+    select(region, context, sex, year, diagnoses, period, retested)
+  
+  chlamRetest7f <- chlamRetestSHC7 %>% 
+    select(6:9) %>%
+    rename(year = X__6, region = X__7, retested = X__8, diagnoses = X__9) %>%
+    mutate(year = as.integer(year), retested = as.numeric(retested), 
+      diagnoses = as.numeric(diagnoses)) %>%
+    mutate(sex = "female", context = "shc", period = "7-180") %>%
+    select(region, context, sex, year, diagnoses, period, retested)
+  
+   # Merge and filter out 2017 data
+  chlamRetestSHC <- bind_rows(chlamRetest120m, chlamRetest120f, 
+    chlamRetest7m, chlamRetest7f) %>%
+    filter(year == 2017) 
+  
+  # Do overall calculations
+  retestVariation <- chlamRetestSHC %>%
+    group_by(region, context, year, period) %>%
+    summarise(diagnoses = sum(diagnoses), retested = sum(retested)) %>%
+    ungroup() %>%
+    mutate(sex = "all") %>%
+    select(region, context, sex, year, diagnoses, period, retested) %>%
+    bind_rows(chlamRetestSHC) %>%
+    arrange(period, region, sex)
+
+  # Now calculate proportion retest and lower and upper bound -------------
+  retestVariation <- retestVariation %>%
+    mutate(prop_retested = retested / diagnoses)
+  
+  # Need to remove NAs to calculate upper and lower 95% confidence intervals
+  # using prop.test
+  
+  LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
+  UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
+  
+  qcal <- function(x, y) round(100*c(x/y, LowerProp(x, y), UpperProp(x, y)),
+    digits = 1)
+  
+  indices <- (!is.na(retestVariation$retested) &
+      (retestVariation$diagnoses != 0))
+  
+  propLower <- mapply(LowerProp, retestVariation$retested[indices],
+    retestVariation$diagnoses[indices])
+  propUpper <- mapply(UpperProp, retestVariation$retested[indices],
+    retestVariation$diagnoses[indices])
+  
+  retestVariation$prop_lower <- NA
+  retestVariation$prop_upper <- NA
+  
+  retestVariation[indices, ]$prop_lower <- propLower
+  retestVariation[indices, ]$prop_upper <- propUpper
+  
+  retestVariation[is.na(retestVariation)] <- 0
+  
+  # Add base data and write to file ---------------------------------------
+  retestVariation <- retestVariation %>% 
+    bind_rows(chlamRetestRange) %>%
+    arrange(period, region, sex)
+  
+  write.csv(retestVariation, file = file.path(cleanDataFolder,
+    paste0("chlamRetestVariation_clean-", toString(dataYear), ".csv")),
+    row.names = FALSE)
+  
+  write.csv(retestVariation, file = file.path(cascadeDataFolder,
+    paste0("chlamRetestVariation_clean-", toString(dataYear), ".csv")),
+    row.names = FALSE)
+  
+}
+```
