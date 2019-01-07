@@ -123,7 +123,7 @@ if (yearAnalysis < 2015) {
 }
 
 # Select the variables required and create processed data
-vars <- c("state", "postcode", "sex", "dob", "cob", "rob", "datehiv",
+vars <- c("state", "sex", "dob", "cob", "rob", "datehiv",
   "age_hiv", "dateaids", "cd4count", "expcode", "partnercob", "dateneg",
   "dateindet", "dateill", "datedeath",
   "causeofdeath", "previ_diag_overseas",
@@ -133,6 +133,10 @@ if (yearAnalysis < 2015) {
   vars <- c(vars,"aborig")
 } else {
   vars <- c(vars, "indigenous", "indig")
+}
+
+if (yearAnalysis >= 2017) {
+   vars <- c(vars,"postcode")
 }
 
 processData <- rawData[,vars]
