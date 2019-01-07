@@ -57,7 +57,7 @@ if (!require(readstata13)) {
   install.packages("readstata13")
   
   # Try to reload package
-  if (!require(foreign)) {
+  if (!require(readstata13)) {
     stop("could not install readstata13")
   }
 }
@@ -123,11 +123,11 @@ if (yearAnalysis < 2015) {
 }
 
 # Select the variables required and create processed data
-vars <- c("state", "sex", "dob", "cob", "rob", "datehiv", "age_hiv", 
-          "dateaids", "cd4count", "expcode", "partnercob", "dateneg",
-          "dateindet", "dateill", "datedeath",
-          "causeofdeath", "previ_diag_overseas",
-          "country_prev_diag", "cd4_date", "yearhiv")
+vars <- c("state", "postcode", "sex", "dob", "cob", "rob", "datehiv",
+  "age_hiv", "dateaids", "cd4count", "expcode", "partnercob", "dateneg",
+  "dateindet", "dateill", "datedeath",
+  "causeofdeath", "previ_diag_overseas",
+  "country_prev_diag", "cd4_date", "yearhiv")
 
 if (yearAnalysis < 2015) {
   vars <- c(vars,"aborig")
