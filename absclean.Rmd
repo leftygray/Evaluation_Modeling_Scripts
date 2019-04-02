@@ -370,6 +370,264 @@ write.csv(interMigrationData, file = file.path(cascadeDataFolder,
 
 ```
 
+## Proportion of people who move between SA3 regions
+
+```{r Interegion movement}
+# This chuck reads in the saved csv files downloaded from ABS.Stat with the 
+# data for migration bewteen SA3 level geographic areas (Arrivals, 
+# departures, region, age group and sex - financial years 2006-07 to 
+# 2014-15) and ERP data for each SA3 region. 
+
+# To obtain data movement data go to series 3218.0 Regional Population
+# Growth, Australia 2017-18
+# (https://www.abs.gov.au/AUSSTATS/abs@.nsf/mf/3218.0) and enter
+# ABS.Stat. Select Regional Internal Migration (Regional Internal Migration 
+# Estimates by Region (SA3 and above), Age and Sex, 2006-07 to 2015-16   : 
+# RIME by Region). To download the data requires selecting the SA3 regional 
+# level from Customize and downloading the persons, males, and females data 
+# separately to three CSV files: 
+# 3218-ABSSTAT_regional_movement_age_sex-2007-2015-persons.csv, 
+# 3218-ABSSTAT_regional_movement_age_sex-2007-2015-males.csv, and
+# 3218-ABSSTAT_regional_movement_age_sex-2007-2015-females.csv.
+# This is because the data is too big to download as a single file. This data # is merged and cleaned below. 
+# 
+# To obtain the ERP data go to series 3218.0 Regional Population
+# Growth, Australia 2017-18
+# (https://www.abs.gov.au/AUSSTATS/abs@.nsf/mf/3218.0) and enter
+# ABS.Stat. Select Estimated Resident Population (ERP by SA2 (ASGS 2011), 
+# Age and Sex, # 2001 to 2016). To download the data requires selecting the 
+# SA3 regional level from Customize and downloading the persons, males, and 
+# females data separately to three CSV files: 
+# 3218-ABSSTAT_ERP_Regional_Age_Sex-2001-2016-persons.csv, 
+# 3218-ABSSTAT_ERP_Regional_Age_Sex-2001-2016-males.csv, and
+# 3218-ABSSTAT_ERP_Regional_Age_Sex-2001-2016-females.csv.
+# This is because the data is too big to download as a single file. This 
+# data is merged and cleaned below. 
+
+## First sort out population movement -------------------------------------
+
+# Read in and do basic tidying of downloaded movement files
+regionMigrationDataPersons <- read_csv(file.path(absFolder,
+  paste0("3218-ABSSTAT_regional_movement_age_sex-2007-2015-persons.csv")),
+  col_types = cols(
+  RIM = col_integer(),
+  `Migration Type` = col_character(),
+  AGE = col_character(),
+  `Age Group` = col_character(),
+  SEX = col_integer(),
+  Sex = col_character(),
+  REGIONTYPE = col_character(),
+  `Region Type` = col_character(),
+  ASGS_2011_SA34_GCCSA_STE = col_character(),
+  Region = col_character(),
+  FREQUENCY = col_character(),
+  Frequency = col_character(),
+  TIME_FY = col_integer(),
+  Time = col_character(),
+  Value = col_integer(),
+  `Flag Codes` = col_character(),
+  Flags = col_character())) %>%
+  select(`Migration Type`, `Age Group`, Sex, REGIONTYPE, Region, TIME_FY,
+    Value) 
+
+regionMigrationDataMales <- read_csv(file.path(absFolder,
+  paste0("3218-ABSSTAT_regional_movement_age_sex-2007-2015-males.csv")),
+  col_types = cols(
+  RIM = col_integer(),
+  `Migration Type` = col_character(),
+  AGE = col_character(),
+  `Age Group` = col_character(),
+  SEX = col_integer(),
+  Sex = col_character(),
+  REGIONTYPE = col_character(),
+  `Region Type` = col_character(),
+  ASGS_2011_SA34_GCCSA_STE = col_character(),
+  Region = col_character(),
+  FREQUENCY = col_character(),
+  Frequency = col_character(),
+  TIME_FY = col_integer(),
+  Time = col_character(),
+  Value = col_integer(),
+  `Flag Codes` = col_character(),
+  Flags = col_character())) %>%
+  select(`Migration Type`, `Age Group`, Sex, REGIONTYPE, Region, TIME_FY,
+    Value) 
+
+regionMigrationDataFemales <- read_csv(file.path(absFolder,
+  paste0("3218-ABSSTAT_regional_movement_age_sex-2007-2015-females.csv")),
+  col_types = cols(
+  RIM = col_integer(),
+  `Migration Type` = col_character(),
+  AGE = col_character(),
+  `Age Group` = col_character(),
+  SEX = col_integer(),
+  Sex = col_character(),
+  REGIONTYPE = col_character(),
+  `Region Type` = col_character(),
+  ASGS_2011_SA34_GCCSA_STE = col_character(),
+  Region = col_character(),
+  FREQUENCY = col_character(),
+  Frequency = col_character(),
+  TIME_FY = col_integer(),
+  Time = col_character(),
+  Value = col_integer(),
+  `Flag Codes` = col_character(),
+  Flags = col_character())) %>%
+  select(`Migration Type`, `Age Group`, Sex, REGIONTYPE, Region, TIME_FY,
+    Value) 
+
+# Bind the data and clean
+regionMigrationData <- bind_rows(regionMigrationDataPersons, 
+  regionMigrationDataMales, regionMigrationDataFemales) %>%
+  # Only keep for SA3 level
+  filter(REGIONTYPE == "SA3") %>%
+  # Rename columns
+  rename(type = `Migration Type`, age = `Age Group`, sex = Sex, 
+    region = Region, year = TIME_FY, value = Value) %>%
+  select(year, region, sex, age, type, value) %>%
+  mutate(sex = tolower(sex), 
+    type = tolower(type), age = tolower(age)) %>%
+ # Tidy up strings
+  mutate(age = str_replace_all(age, " ", ""),
+    type = str_sub(type, 22, -1),
+    sex = ifelse(sex == "persons", "all", sex)) %>%
+  mutate(sex = ifelse(sex == "males", "male", sex),
+    sex = ifelse(sex == "females", "female", sex)) %>%
+  mutate(age = str_c("a", str_replace_all(age, "-", "_"))) %>%
+  mutate(age = ifelse(age == "a65andover", "a65+", age)) %>%
+  mutate(age = ifelse(age == "aallages", "all", age)) %>%
+  # Spread type and drop net
+  spread(type, value) %>%
+  select(-net)
+
+## Second sort out ERP ----------------------------------------------------
+
+# Read in and do basic tidying of downloaded ERP files
+regionErpDataPersons <- read_csv(file.path(absFolder,
+  paste0("3218-ABSSTAT_ERP_Regional_Age_Sex-2001-2016-persons.csv")),
+  col_types = cols(
+    MEASURE = col_character(),
+    Measure = col_character(),
+    SEX_ABS = col_integer(),
+    Sex = col_character(),
+    AGE = col_character(),
+    Age = col_character(),
+    REGIONTYPE = col_character(),
+    `Region Type` = col_character(),
+    ASGS_2011 = col_integer(),
+    Region = col_character(),
+    FREQUENCY = col_character(),
+    Frequency = col_character(),
+    TIME = col_integer(),
+    Time = col_integer(),
+    Value = col_integer(),
+    `Flag Codes` = col_character(),
+    Flags = col_character()
+  )) 
+
+regionErpDataMales <- read_csv(file.path(absFolder,
+  paste0("3218-ABSSTAT_ERP_Regional_Age_Sex-2001-2016-males.csv")),
+  col_types = cols(
+    MEASURE = col_character(),
+    Measure = col_character(),
+    SEX_ABS = col_integer(),
+    Sex = col_character(),
+    AGE = col_character(),
+    Age = col_character(),
+    REGIONTYPE = col_character(),
+    `Region Type` = col_character(),
+    ASGS_2011 = col_integer(),
+    Region = col_character(),
+    FREQUENCY = col_character(),
+    Frequency = col_character(),
+    TIME = col_integer(),
+    Time = col_integer(),
+    Value = col_integer(),
+    `Flag Codes` = col_character(),
+    Flags = col_character()
+  ))
+
+regionErpDataFemales <- read_csv(file.path(absFolder,
+  paste0("3218-ABSSTAT_ERP_Regional_Age_Sex-2001-2016-females.csv")),
+  col_types = cols(
+    MEASURE = col_character(),
+    Measure = col_character(),
+    SEX_ABS = col_integer(),
+    Sex = col_character(),
+    AGE = col_character(),
+    Age = col_character(),
+    REGIONTYPE = col_character(),
+    `Region Type` = col_character(),
+    ASGS_2011 = col_integer(),
+    Region = col_character(),
+    FREQUENCY = col_character(),
+    Frequency = col_character(),
+    TIME = col_integer(),
+    Time = col_integer(),
+    Value = col_integer(),
+    `Flag Codes` = col_character(),
+    Flags = col_character()
+  ))
+
+# Bind the data and clean
+regionErpData <- bind_rows(regionErpDataPersons, regionErpDataMales,
+  regionErpDataFemales) %>%
+  select(Sex, Age, REGIONTYPE, Region, Time, Value) %>%
+  # Only keep for SA3 level
+  filter(REGIONTYPE == "SA3") %>%
+  # Rename columns
+  rename(age = Age, sex = Sex, 
+    region = Region, year = Time, erp = Value) %>%
+  select(year, region, sex, age, erp) %>%
+  mutate(sex = tolower(sex), 
+    age = tolower(age)) %>%
+  # Tidy up strings
+  mutate(age = str_replace_all(age, " ", ""),
+    sex = ifelse(sex == "persons", "all", sex)) %>%
+  mutate(sex = ifelse(sex == "males", "male", sex),
+    sex = ifelse(sex == "females", "female", sex)) %>%
+  mutate(age = str_c("a", str_replace_all(age, "-", "_"))) %>%
+  mutate(age = ifelse(age == "a85andover", "a85+", age)) %>%
+  mutate(age = ifelse(age == "aallages", "all", age))
+
+# Group ERP into movement age bins: "a0_14", "a15_24", "a25_44", "a45_64"
+# "a65+", "all" 
+
+regionErpData <- regionErpData %>%
+  mutate(agebin = ifelse(age %in% c("a0_4", "a5_9", "a10_14"), "a0_14", 
+    age)) %>%
+  mutate(agebin = ifelse(age %in% c("a15_19", "a20_24"), "a15_24", 
+    agebin)) %>%
+  mutate(agebin = ifelse(age %in% c("a25_29", "a30_34", "a35_39", 
+    "a40_44"), "a25_44", agebin)) %>%
+  mutate(agebin = ifelse(age %in% c("a45_49", "a50_54", "a55_59", 
+    "a60_64"), "a45_64", agebin)) %>%
+  mutate(agebin = ifelse(age %in% c("a65_69", "a70_74", "a75_79", "a80_84", 
+    "a85+"), "a65+", agebin))
+
+regionErpData <- regionErpData %>%
+  select(-age) %>%
+  group_by(year, region, sex, agebin) %>%
+  summarise(erp = sum(erp)) %>%
+  ungroup() %>%
+  rename(age = agebin)
+
+# Add erp data to movement data -------------------------------------------
+regionMigrationData <- regionMigrationData %>% 
+  left_join(regionErpData, by = c("year", "region", "sex", "age"))
+
+## Save the final cleaned data set ---------------------------------------- 
+write.csv(regionMigrationData, file = file.path(cleanDataFolder,
+  paste0("ABS_interregion_age_sex_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+write.csv(regionMigrationData, file = file.path(cascadeDataFolder,
+  paste0("ABS_interregion_age_sex_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+```
+
+
 ## Estimated resident population for each age and sex
 
 This R chuck cleans the ERP data by sex and age provided by the ABS. It is
