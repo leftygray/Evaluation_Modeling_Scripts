@@ -29,11 +29,12 @@ dataPath <- file.path(basePath, "data", "HIV", "raw")
 cleanDataFolder <- file.path(basePath,"data", "HIV")
 
 # Additional cleaned data folders for copies
-cascadeDataFolder <- file.path(basePath,"project_care_cascades", "HIV", 
-  "data")
+# Additional cleaned data folders for copies
+cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
+  "Australian Care Cascades - Documents", "HIV", "data")
 
 # Primary script parameters
-dataYear <- 2017
+dataYear <- 2018
 
 ```
 
@@ -83,7 +84,8 @@ if (dataYear <= 2013) {
 # Rename and order variables for ease of use
 hivdata <- hivdata %>%
   rename(datediagnosis = datehiv, agehiv = age_hiv, exposure = expcode) %>%
-  select(state, postcode, everything())
+  select(state, postcode, everything()) %>%
+  as_tibble()
 
 if (dataYear > 2013){
   hivdata <- rename(hivdata, cd4date = cd4_date)
@@ -209,7 +211,7 @@ hivdata[hivdata$exposure == "unknown", ]$expgroup <- "unknown"
 # analysis. 
 
 hivdata$countrygroup <- rep(NA, nrow(hivdata))
-hivdata[which(hivdata$cob == 1100), ]$countrygroup <- "australia"
+hivdata[which(hivdata$cob == 1101 || hivdata$cob == 1100), ]$countrygroup <- "australia"
 
 if (dataYear >= 2017) {
   hivdata[which(hivdata$rob == "SE Asia"), ]$countrygroup <- "bornsea"
@@ -219,7 +221,7 @@ if (dataYear >= 2017) {
     "S & C Asia", "S & E Europe", "S America")), ]$countrygroup <-
     "othercob"
   hivdata[which(hivdata$rob == "Oceania/Anatartica" & 
-      hivdata$cob != 1100), ]$countrygroup <- "othercob"
+      hivdata$cob != 1101), ]$countrygroup <- "othercob"
 } else {
   hivdata[which(hivdata$rob == 9), ]$countrygroup <- "bornsea"
   hivdata[which(hivdata$rob == 12), ]$countrygroup <- "bornssa"
@@ -249,12 +251,12 @@ if (dataYear < 2015) {
       hivdata$indigenous == "Non-Indigenous"),
     ]$aboriggroup <- "non-indigenous"
 } else {
-  hivdata[which(hivdata$cob != 1100 | hivdata$rob != 7),]$aboriggroup <-
+  hivdata[which(hivdata$cob != 1101 | hivdata$rob != 7),]$aboriggroup <-
     "othercob"
   hivdata[which(hivdata$cob == 0),]$aboriggroup <- NA
-  hivdata[which(hivdata$cob == 1100 & hivdata$indig == 1),
+  hivdata[which(hivdata$cob == 1101 & hivdata$indig == 1),
     ]$aboriggroup <- "indigenous"
-  hivdata[which(hivdata$cob == 1100 & 
+  hivdata[which(hivdata$cob == 1101 & 
       hivdata$indigenous != 1),
     ]$aboriggroup <- "non-indigenous"
 }
@@ -337,11 +339,73 @@ write.csv(pharmData, file = file.path(cascadeDataFolder,
 
 ```
 
+
+## AHod data for mortality, retained in care and suppressed virus
+
+```{r ahoddata}
+# Clean up the ahod data provided by the biostats program
+
+# Load the ahod data. Only have it this form for 2013-2014
+if (dataYear %in% c(2014, 2015)) {
+  
+  ahodData <- read_excel(file.path(dataPath, 
+    paste0("ahod", toString(dataYear),".xlsx")))
+  
+  # Do some simple cleaning
+  ahodData$state <- tolower(ahodData$state)
+  ahodData$population <- tolower(ahodData$population)
+  
+  # Remove last two columns
+  ahodData <- ahodData[,1:(ncol(ahodData)-2)]
+  
+  # Convert year to number
+  ahodData$year <- as.numeric(ahodData$year)
+  
+  # Replace "-99" with NA
+  ahodData[ahodData == -99] <- NA
+  
+  # Filter out unnecessary years
+  ahodData <- filter(ahodData, year <= dataYear)
+  
+} else { 
+  # After 2015 the data has been provided in csv format but still needs 
+  # some things to be changed
+  ahodData <- read_csv(file.path(dataPath, 
+    paste0("ahod", toString(dataYear),".csv"))) %>%
+    select(1:11)
+  
+  # Do some simple cleaning
+  ahodData$state <- tolower(ahodData$state)
+  ahodData$population <- tolower(ahodData$population)
+  
+  # Convert year to number
+  ahodData$year <- as.numeric(ahodData$year)
+  
+  # Replace "-99" with NA
+  ahodData[ahodData == -99] <- NA
+  
+  # Filter out unnecessary years
+  ahodData <- filter(ahodData, year <= dataYear)
+  
+}
+
+#Save cleaned hivdata
+write.csv(ahodData, file = file.path(cleanDataFolder, 
+  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
+
+write.csv(ahodData, file = file.path(cascadeDataFolder, 
+  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
+
+```
+
+
+# FOLLWOING ARE DEPRECATED
+
 ## Old Treament Spending Data
 
 To get trends in number on treatment I use the total spending data from a PBS spending data set provided by Hamish McManus
 
-```{r s100}
+```{r s100 - Deprecated}
 # Raw s100 spending file only up to 2015
 rawS100 <- file.path(dataPath,"S100_2015.xls",sep="")
 
@@ -432,7 +496,7 @@ To estimate the total number of people living with HIV I need to know the
 estimated mortality rate. James Jansson's back-projection model provides an 
 estimate. 
 
-```{r projectedDeaths}
+```{r projectedDeaths - Deprecated}
 # Clean up the results from the back projection analysis and store proportion 
 # who die each year from MSM and non-MSM
 
@@ -484,63 +548,4 @@ write.csv(projectDeaths, file = file.path(cascadeDataFolder,
   "projectedDeaths_clean-2013.csv"), row.names = FALSE)
 
 ```
-
-## AHod data for mortality, retained in care and suppressed virus
-
-```{r ahoddata}
-# Clean up the ahod data provided by the biostats program
-
-# Load the ahod data. Only have it this form for 2013-2014
-if (dataYear %in% c(2014, 2015)) {
-  
-  ahodData <- read_excel(file.path(dataPath, 
-    paste0("ahod", toString(dataYear),".xlsx")))
-  
-  # Do some simple cleaning
-  ahodData$state <- tolower(ahodData$state)
-  ahodData$population <- tolower(ahodData$population)
-  
-  # Remove last two columns
-  ahodData <- ahodData[,1:(ncol(ahodData)-2)]
-  
-  # Convert year to number
-  ahodData$year <- as.numeric(ahodData$year)
-  
-  # Replace "-99" with NA
-  ahodData[ahodData == -99] <- NA
-  
-  # Filter out unnecessary years
-  ahodData <- filter(ahodData, year <= dataYear)
-  
-} else { 
-  # After 2015 the data has been provided in csv format but still needs 
-  # some things to be changed
-  ahodData <- read_csv(file.path(dataPath, 
-    paste0("ahod", toString(dataYear),".csv"))) %>%
-    select(1:11)
-  
-  # Do some simple cleaning
-  ahodData$state <- tolower(ahodData$state)
-  ahodData$population <- tolower(ahodData$population)
-  
-  # Convert year to number
-  ahodData$year <- as.numeric(ahodData$year)
-  
-  # Replace "-99" with NA
-  ahodData[ahodData == -99] <- NA
-  
-  # Filter out unnecessary years
-  ahodData <- filter(ahodData, year <= dataYear)
-  
-}
-
-#Save cleaned hivdata
-write.csv(ahodData, file = file.path(cleanDataFolder, 
-  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
-
-write.csv(ahodData, file = file.path(cascadeDataFolder, 
-  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
-
-```
-
 

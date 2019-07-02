@@ -72,7 +72,7 @@ specify the input and output files.
 ```{r User specifications, tidy = TRUE}
 
 # User specified year
-yearAnalysis <- 2017
+yearAnalysis <- 2018
 
 ```
 
@@ -80,12 +80,10 @@ yearAnalysis <- 2017
 ```{r files, tidy = TRUE}
 # Raw notifications data - MUST REMAIN PRIVATE
 rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
-  "National HIV Registry", "2017", "National", "Hamish & Richard")
+  "National HIV Registry", "Cascades")
 
-# rawDataFile <- file.path(rawDataDirectory, 
-#   paste0("rawHIVnotifications-", toString(yearAnalysis), ".dta"))
-rawDataFile <- file.path(rawDataDirectory, "2017_NHR_FULL - Backup.dta")
-
+rawDataFile <- file.path(rawDataDirectory, paste0(toString(yearAnalysis), 
+  "_NHR_FULL.dta"))
 # De-identified output file name
 cleanDataFile <- file.path(rawDataDirectory, 
   paste0("cascadeHIVnotifications-raw-", toString(yearAnalysis), ".csv"))
