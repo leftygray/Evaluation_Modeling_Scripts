@@ -279,6 +279,86 @@ write.csv(hivdata, file = file.path(privateDataPath,
 
 ```
 
+
+## AHOD data for mortality, retained in care and suppressed virus
+
+```{r ahoddata}
+# Clean up the AHOD data provided by the biostats program
+
+# Load the ahod data. Only have it this form for 2013-2014
+if (dataYear %in% c(2014, 2015)) {
+  
+  ahodData <- read_excel(file.path(dataPath, 
+    paste0("ahod", toString(dataYear),".xlsx")))
+  
+  # Do some simple cleaning
+  ahodData$state <- tolower(ahodData$state)
+  ahodData$population <- tolower(ahodData$population)
+  
+  # Remove last two columns
+  ahodData <- ahodData[,1:(ncol(ahodData)-2)]
+  
+  # Convert year to number
+  ahodData$year <- as.numeric(ahodData$year)
+  
+  # Replace "-99" with NA
+  ahodData[ahodData == -99] <- NA
+  
+  # Filter out unnecessary years
+  ahodData <- filter(ahodData, year <= dataYear)
+  
+} else if (dataYear %in% c(2016:2018)) { 
+  # After 2015 the data has been provided in csv format but still needs 
+  # some things to be changed
+  ahodData <- read_csv(file.path(dataPath, 
+    paste0("ahod", toString(dataYear),".csv"))) %>%
+    select(1:11)
+  
+  # Do some simple cleaning
+  ahodData$state <- tolower(ahodData$state)
+  ahodData$population <- tolower(ahodData$population)
+  
+  # Convert year to number
+  ahodData$year <- as.numeric(ahodData$year)
+  
+  # Replace "-99" with NA
+  ahodData[ahodData == -99] <- NA
+  
+  # Filter out unnecessary years
+  ahodData <- filter(ahodData, year <= dataYear)
+  
+} else {
+   # After 2015 the data has been provided in csv format but still needs 
+  # some things to be changed
+  ahodData <- read_csv(file.path(dataPath, 
+    paste0("ahod", toString(dataYear),".csv")))
+  colnames(ahodData) <- tolower(colnames(ahodData))
+  
+  # Do some simple cleaning
+  ahodData$state <- tolower(ahodData$state)
+  ahodData$population <- tolower(ahodData$population)
+  
+  # Convert year to number
+  ahodData$year <- as.numeric(ahodData$year)
+  
+  # Replace "-99" with NA
+  ahodData[ahodData == -99] <- NA
+  
+  # Filter out unnecessary years
+  ahodData <- filter(ahodData, year <= dataYear)
+}
+
+#Save cleaned hiv data
+write.csv(ahodData, file = file.path(cleanDataFolder, 
+  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
+
+write.csv(ahodData, file = file.path(cascadeDataFolder, 
+  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
+
+```
+
+# FOLLWOING ARE DEPRECATED
+
 ## Prospection PharmDash HIV Treatment Data (DEPRECATED)
 
 Description of the output from Prospection and the cleaning process. This 
@@ -358,68 +438,6 @@ if (dataYear <= 2018) {
 }
 
 ```
-
-
-## AHOD data for mortality, retained in care and suppressed virus
-
-```{r ahoddata}
-# Clean up the AHOD data provided by the biostats program
-
-# Load the ahod data. Only have it this form for 2013-2014
-if (dataYear %in% c(2014, 2015)) {
-  
-  ahodData <- read_excel(file.path(dataPath, 
-    paste0("ahod", toString(dataYear),".xlsx")))
-  
-  # Do some simple cleaning
-  ahodData$state <- tolower(ahodData$state)
-  ahodData$population <- tolower(ahodData$population)
-  
-  # Remove last two columns
-  ahodData <- ahodData[,1:(ncol(ahodData)-2)]
-  
-  # Convert year to number
-  ahodData$year <- as.numeric(ahodData$year)
-  
-  # Replace "-99" with NA
-  ahodData[ahodData == -99] <- NA
-  
-  # Filter out unnecessary years
-  ahodData <- filter(ahodData, year <= dataYear)
-  
-} else { 
-  # After 2015 the data has been provided in csv format but still needs 
-  # some things to be changed
-  ahodData <- read_csv(file.path(dataPath, 
-    paste0("ahod", toString(dataYear),".csv"))) %>%
-    select(1:11)
-  
-  # Do some simple cleaning
-  ahodData$state <- tolower(ahodData$state)
-  ahodData$population <- tolower(ahodData$population)
-  
-  # Convert year to number
-  ahodData$year <- as.numeric(ahodData$year)
-  
-  # Replace "-99" with NA
-  ahodData[ahodData == -99] <- NA
-  
-  # Filter out unnecessary years
-  ahodData <- filter(ahodData, year <= dataYear)
-  
-}
-
-#Save cleaned hiv data
-write.csv(ahodData, file = file.path(cleanDataFolder, 
-  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
-
-write.csv(ahodData, file = file.path(cascadeDataFolder, 
-  paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
-
-```
-
-
-# FOLLWOING ARE DEPRECATED
 
 ## Old Treament Spending Data
 
