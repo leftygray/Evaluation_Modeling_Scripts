@@ -21,7 +21,7 @@ LoadLibrary(readxl)
 
 # Key folder paths
 privateDataPath <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
-  "National HIV Registry", "2017", "National", "Hamish & Richard")
+  "National HIV Registry", "Cascades")
 
 basePath <- file.path(dirname(getwd()))
 dataPath <- file.path(basePath, "data", "HIV", "raw")
@@ -29,12 +29,11 @@ dataPath <- file.path(basePath, "data", "HIV", "raw")
 cleanDataFolder <- file.path(basePath,"data", "HIV")
 
 # Additional cleaned data folders for copies
-# Additional cleaned data folders for copies
 cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "HIV", "data")
 
 # Primary script parameters
-dataYear <- 2018
+dataYear <- 2019
 
 ```
 
@@ -84,8 +83,7 @@ if (dataYear <= 2013) {
 # Rename and order variables for ease of use
 hivdata <- hivdata %>%
   rename(datediagnosis = datehiv, agehiv = age_hiv, exposure = expcode) %>%
-  select(state, postcode, everything()) %>%
-  as_tibble()
+  select(state, postcode, everything()) 
 
 if (dataYear > 2013){
   hivdata <- rename(hivdata, cd4date = cd4_date)
@@ -103,7 +101,7 @@ if (dataYear < 2017) {
   for(ii in 1:8){
     hivdata[hivdata$state == ii,]$state <- states[ii]
   }
-} else {
+} else if (dataYear == 2018) {
   hivdata[hivdata$sex == "Male",]$sex <- "male" 
   hivdata[hivdata$sex == "Female",]$sex <- "female" 
   hivdata[hivdata$sex == "Transgender",]$sex <- "transgender" 
@@ -111,6 +109,11 @@ if (dataYear < 2017) {
   
   hivdata$state <- tolower(hivdata$state)
   hivdata[hivdata$state == "not reported",]$state <- NA
+} else {
+  
+  hivdata$sex <- tolower(hivdata$sex)
+  hivdata$state <- tolower(hivdata$state)
+  # hivdata[hivdata$state == "not reported",]$state <- NA
 }
 
 # Add a classification for linkage to care based on CD4 count variable.
@@ -150,9 +153,9 @@ hivdata[hivdata$exposure == "1A3B", ]$exposure <- "msm"
 hivdata[hivdata$exposure == "1A3C", ]$exposure <- "msm"
 hivdata[hivdata$exposure == "1B", ]$exposure <- "bisex-male"
 hivdata[hivdata$exposure == "1B3A", ]$exposure <- "bisex-male-idu"
-hivdata[hivdata$exposure == "1B3B", ]$exposure <- "bisex-male"
+# hivdata[hivdata$exposure == "1B3B", ]$exposure <- "bisex-male"
 hivdata[hivdata$exposure == "1C2A", ]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C2A2B", ]$exposure <- "hetero"
+# hivdata[hivdata$exposure == "1C2A2B", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2B", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2C", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2D", ]$exposure <- "hetero"
@@ -164,7 +167,7 @@ hivdata[hivdata$exposure == "1C3A", ]$exposure <- "hetero-idu"
 hivdata[hivdata$exposure == "1C3A2B", ]$exposure <- "hetero-idu"
 hivdata[hivdata$exposure == "1C3A2E", ]$exposure <- "hetero-idu"
 hivdata[hivdata$exposure == "1C3B", ]$exposure <- "hetero"
-hivdata[hivdata$exposure == "1C3C", ]$exposure <- "hetero"
+# hivdata[hivdata$exposure == "1C3C", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1D", ]$exposure <- "hetero" #high-prev-country"
 hivdata[hivdata$exposure == "1E", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "1E3A", ]$exposure <- "idu"
@@ -179,9 +182,9 @@ hivdata[hivdata$exposure == "4B", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4C", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4D", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4E", ]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4F", ]$exposure <- "mtct"
+# hivdata[hivdata$exposure == "4F", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4G", ]$exposure <- "mtct"
-hivdata[hivdata$exposure == "4J", ]$exposure <- "mtct"
+# hivdata[hivdata$exposure == "4J", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4K", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "5A", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5A1", ]$exposure <- "unknown"
@@ -211,9 +214,16 @@ hivdata[hivdata$exposure == "unknown", ]$expgroup <- "unknown"
 # analysis. 
 
 hivdata$countrygroup <- rep(NA, nrow(hivdata))
-hivdata[which(hivdata$cob == 1101 || hivdata$cob == 1100), ]$countrygroup <- "australia"
+hivdata[which(hivdata$cob == 1101 | hivdata$cob == 1100), ]$countrygroup <- "australia"
 
-if (dataYear >= 2017) {
+if (dataYear < 2017) {
+  hivdata[which(hivdata$rob == 9), ]$countrygroup <- "bornsea"
+  hivdata[which(hivdata$rob == 12), ]$countrygroup <- "bornssa"
+  hivdata[which(hivdata$rob %in% c(1,2,3,4,5,6,8,10,11)), ]$countrygroup <-
+    "othercob"
+  hivdata[which(hivdata$rob == 7 & hivdata$cob != 1100), ]$countrygroup <-
+    "othercob"
+} else if (dataYear %in% c(2017, 2018)) {
   hivdata[which(hivdata$rob == "SE Asia"), ]$countrygroup <- "bornsea"
   hivdata[which(hivdata$rob == "SSA"), ]$countrygroup <- "bornssa"
   hivdata[which(hivdata$rob %in% c("C America", "Caribbean", 
@@ -223,11 +233,12 @@ if (dataYear >= 2017) {
   hivdata[which(hivdata$rob == "Oceania/Anatartica" & 
       hivdata$cob != 1101), ]$countrygroup <- "othercob"
 } else {
-  hivdata[which(hivdata$rob == 9), ]$countrygroup <- "bornsea"
-  hivdata[which(hivdata$rob == 12), ]$countrygroup <- "bornssa"
-  hivdata[which(hivdata$rob %in% c(1,2,3,4,5,6,8,10,11)), ]$countrygroup <-
-    "othercob"
-  hivdata[which(hivdata$rob == 7 & hivdata$cob != 1100), ]$countrygroup <-
+  # 2019   
+  hivdata[which(hivdata$rob == "SE Asia"), ]$countrygroup <- "bornsea"
+  hivdata[which(hivdata$rob == "SSA"), ]$countrygroup <- "bornssa"
+  hivdata[which(hivdata$rob %in% c("C America", "Caribbean", 
+    "N Africa & ME", "N America", "NE Asia", "NW Europe", 
+    "S & C Asia", "S & E Europe", "S America")), ]$countrygroup <-
     "othercob"
 }
 
@@ -268,82 +279,91 @@ write.csv(hivdata, file = file.path(privateDataPath,
 
 ```
 
-## Prospection PharmDash HIV Treatment Data
+## Prospection PharmDash HIV Treatment Data (DEPRECATED)
 
-Description of the output from Prospection and the cleaning process.
+Description of the output from Prospection and the cleaning process. This 
+is now deprecated as we are getting 100% PBS data now directly from the 
+department of health since 2019. 
 
-```{r Prospection}
-# Raw prospection file
-rawPharmDash <- file.path(dataPath,paste("PharmDash_HIV_Patients_Treatment-", toString(dataYear), ".csv",sep=""))
+```{r Prospection (DEPRECATED)}
+# Raw Prospection file
 
-# Data only reliable from 2013
-startyear <- 2013
-
-# Load the raw HIV notifications file and clean it up. The exported data from 
-# PharmDash is a little messy. Need to skip the first 3 rows. Then tidy up and 
-# extract the data we want. Only valuable from the year 2013
-pharmData <- read.csv(rawPharmDash,skip = 16, na.strings = c("NA", "")) # Skip used to be 3 
-pharmData <- pharmData[!apply(is.na(pharmData) | pharmData == "", 1, all), ] # Remove empty rows
-pharmData$X <- as.character(pharmData$X) # Make sure first column is a character string
-
-# Filter and select rows and columns we need. Filter removes the rows with "Growth"
-# in the category. Select uses a regular expression that 
-# matches the years 2013 to 2099 which should be enough :-)
-pharmData <- pharmData %>%
-  filter(!(c(1:nrow(pharmData)) %in% grep("Growth",pharmData$X))) %>%
-  select(matches("X$|^X20[1-9][3-9].Dec"))
-
-# Tidy up column names
-nyears <- ncol(pharmData)-1
-years <- c(startyear:((startyear-1)+nyears))
-charyears <- paste("X", as.character(years),sep = "")
-colnames(pharmData) <- c("category",charyears)
-
-# Convert everything to character class for the next step of manipulation
-pharmData <- data.frame(lapply(pharmData, as.character), stringsAsFactors = FALSE)
-
-# Add new columns for state and gender
-pharmData$gender <- rep(NA,nrow(pharmData))
-pharmData$state <- rep(NA,nrow(pharmData))
-
-pharmData$gender[grep("^M,",pharmData$category)] <- "m"
-pharmData$gender[grep("^F,",pharmData$category)] <- "f"
-pharmData$gender[grep("^All Genders,",pharmData$category)] <- "all"
-
-states <- c("WA","VIC","TAS","SA","QLD","NT","NSW","ACT")
-for (ii in seq(along = states)){
-  pharmData$state[grep(paste(states[ii],"$",sep = ""),pharmData$category)] <- tolower(states[ii])
+if (dataYear <= 2018) {
+  rawPharmDash <- file.path(dataPath,paste("PharmDash_HIV_Patients_Treatment-", toString(dataYear), ".csv",sep=""))
+  
+  # Data only reliable from 2013
+  startyear <- 2013
+  
+  # Load the raw HIV notifications file and clean it up. The exported data from 
+  # PharmDash is a little messy. Need to skip the first 3 rows. Then tidy up and 
+  # extract the data we want. Only valuable from the year 2013
+  pharmData <- read.csv(rawPharmDash,skip = 16, na.strings = c("NA", "")) # Skip used to be 3 
+  pharmData <- pharmData[!apply(is.na(pharmData) | pharmData == "", 1, all), ] # Remove empty rows
+  pharmData$X <- as.character(pharmData$X) # Make sure first column is a character string
+  
+  # Filter and select rows and columns we need. Filter removes the rows with "Growth"
+  # in the category. Select uses a regular expression that 
+  # matches the years 2013 to 2099 which should be enough :-)
+  pharmData <- pharmData %>%
+    filter(!(c(1:nrow(pharmData)) %in% grep("Growth",pharmData$X))) %>%
+    select(matches("X$|^X20[1-9][3-9].Dec"))
+  
+  # Tidy up column names
+  nyears <- ncol(pharmData)-1
+  years <- c(startyear:((startyear-1)+nyears))
+  charyears <- paste("X", as.character(years),sep = "")
+  colnames(pharmData) <- c("category",charyears)
+  
+  # Convert everything to character class for the next step of manipulation
+  pharmData <- data.frame(lapply(pharmData, as.character), stringsAsFactors = FALSE)
+  
+  # Add new columns for state and gender
+  pharmData$gender <- rep(NA,nrow(pharmData))
+  pharmData$state <- rep(NA,nrow(pharmData))
+  
+  pharmData$gender[grep("^M,",pharmData$category)] <- "m"
+  pharmData$gender[grep("^F,",pharmData$category)] <- "f"
+  pharmData$gender[grep("^All Genders,",pharmData$category)] <- "all"
+  
+  states <- c("WA","VIC","TAS","SA","QLD","NT","NSW","ACT")
+  for (ii in seq(along = states)){
+    pharmData$state[grep(paste(states[ii],"$",sep = ""),pharmData$category)] <- tolower(states[ii])
+  }
+  
+  pharmData$state[grep("All States",pharmData$category)] <- "all"
+  
+  # Replace less than equals with equals and convert to numeric
+  for (ii in seq(along = charyears)){
+    pharmData[,charyears[ii]] <- as.numeric(gsub("^<= ","",pharmData[,charyears[ii]]))
+  }
+  
+  # Remove category variable, reorder, and remove unnecessary years
+  pharmData <- pharmData %>%
+    select(-category) %>%
+    select(gender, state, num_range("X",years)) %>%
+    select(gender, state, num_range("X",startyear:dataYear))
+  
+  # Finally have it a relatively tidy format so save to output file
+  write.csv(pharmData, file = file.path(cleanDataFolder, 
+    paste0("pharmdash_HIVpatients", toString(dataYear), 
+      ".csv")), row.names = FALSE)
+  
+  write.csv(pharmData, file = file.path(cascadeDataFolder, 
+    paste0("pharmdash_HIVpatients_clean-", toString(dataYear), 
+      ".csv")), row.names = FALSE)
+} else {
+  
+  print("DEPRECATED - Prospection data no longer used from 2019") 
+  
 }
-
-pharmData$state[grep("All States",pharmData$category)] <- "all"
-
-# Replace less than equals with equals and convert to numeric
-for (ii in seq(along = charyears)){
-  pharmData[,charyears[ii]] <- as.numeric(gsub("^<= ","",pharmData[,charyears[ii]]))
-}
-
-# Remove category variable, reorder, and remove unnecessary years
-pharmData <- pharmData %>%
-  select(-category) %>%
-  select(gender, state, num_range("X",years)) %>%
-  select(gender, state, num_range("X",startyear:dataYear))
-
-# Finally have it a relatively tidy format so save to output file
-write.csv(pharmData, file = file.path(cleanDataFolder, 
-  paste0("pharmdash_HIVpatients", toString(dataYear), 
-    ".csv")), row.names = FALSE)
-
-write.csv(pharmData, file = file.path(cascadeDataFolder, 
-  paste0("pharmdash_HIVpatients_clean-", toString(dataYear), 
-    ".csv")), row.names = FALSE)
 
 ```
 
 
-## AHod data for mortality, retained in care and suppressed virus
+## AHOD data for mortality, retained in care and suppressed virus
 
 ```{r ahoddata}
-# Clean up the ahod data provided by the biostats program
+# Clean up the AHOD data provided by the biostats program
 
 # Load the ahod data. Only have it this form for 2013-2014
 if (dataYear %in% c(2014, 2015)) {
@@ -389,7 +409,7 @@ if (dataYear %in% c(2014, 2015)) {
   
 }
 
-#Save cleaned hivdata
+#Save cleaned hiv data
 write.csv(ahodData, file = file.path(cleanDataFolder, 
   paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
 

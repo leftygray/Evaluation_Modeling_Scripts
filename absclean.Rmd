@@ -2,11 +2,11 @@ ABS data cleaning
 =================
   
 This script is used to load and clean raw demographic data from the 
-Australian Burea of Statistica (ABS). These data are primarily used for 
+Australian Bureau of Statistics (ABS). These data are primarily used for 
 care cascade calculations but can be useful for Australian evaluation
 models in general. The original raw data sets are stored 
 in the ~/Evaluation\_Modelling/data/ABS/raw/ folder. The resulting cleaned
-data sets are saved as dataframes in csv files in the
+data sets are saved as data frames in csv files in the
 ~/Evaluation\_Modelling/data/ABS/ folder. A description of the ABS data sets 
 and important data definitions are provided in each chunk. Each chunk can 
 be run separately. 
@@ -39,7 +39,7 @@ source("TidyLongitudinal.R")
 states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2018 # Annual data from 2014
+dataYear <- 2019 # Annual data from 2014
 
 ```
 
