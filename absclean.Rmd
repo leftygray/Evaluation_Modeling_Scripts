@@ -267,6 +267,8 @@ colnames(arrData) <- c("year",states)
 nrows <- nrow(arrData)
 arrData <- arrData[4:nrows,]
 
+numYears <- nrow(arrData)/4
+
 # Sum the year data cumulative and then slice to select every fourth row 
 # (corresponding to total for the year)
 
@@ -276,7 +278,7 @@ arrData <- arrData %>%
   group_by(year,state) %>%
   mutate(arrivals = cumsum(qtr_arrivals)) %>%
   ungroup() %>%
-  slice(seq(4, 1188, by =4)) %>%
+  slice(seq(4, numYears*8*4+4, by =4)) %>% # Exclude all; take every 4th row
   select(-qtr_arrivals)
  
 # Process departures -----------------------------------------------------
@@ -303,7 +305,7 @@ depData <- depData %>%
   group_by(year, state) %>%
   mutate(departures = cumsum(qtr_departures)) %>%
   ungroup() %>%
-  slice(seq(4, 1188, by =4)) %>%
+  slice(seq(4, numYears*8*4+4, by =4)) %>% # Exclude all; take every 4th row
   select(-qtr_departures)
 
 # Join the arrivals and departures data frames
@@ -664,6 +666,115 @@ write.csv(erpasData, file = file.path(cleanDataFolder,
 
 write.csv(erpasData, file = file.path(cascadeDataFolder,
   paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+```
+
+```{r PharmDash ERP}
+# Generate ERP for sub-populations in the ART data from the 10% 
+# Prospection sample 
+# Use variables: erpData and erpasData
+
+prospectionYears <- 2013:dataYear
+
+# Overall and state ERP
+stateERP <- erpData %>% 
+  filter(year %in% prospectionYears) %>%
+  arrange(year, desc(erp)) %>%
+  rename(population = state) 
+
+# Sex and age ERP
+asERP <- erpasData %>%
+  filter(year %in% prospectionYears) %>%
+  gather(2:ncol(.), key = "group", value = "erp") %>%
+  arrange(year, group) %>%
+  mutate(sex = str_split_fixed(.$group, "-", n = 2)[, 1], 
+    age = str_split_fixed(.$group, "-", n = 2)[, 2]) %>%
+  select(year, sex, age, erp) %>%
+  mutate(age = as.integer(age)) %>%
+  arrange(year, sex, age) %>%
+  as_tibble()
+
+sexERP <- asERP %>%
+  group_by(year, sex) %>%
+  summarise(erp = sum(erp)) %>% 
+  rename(population = sex) %>%
+  filter(population != "all") %>%
+  ungroup()
+
+ageERP20 <- asERP %>% 
+  filter(sex == "all", age < 20) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "< 20") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP20_29 <- asERP %>% 
+  filter(sex == "all", age %in% 20:29) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "20-29") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP30_39 <- asERP %>% 
+  filter(sex == "all", age %in% 30:39) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "30-39") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP40_49 <- asERP %>% 
+  filter(sex == "all", age %in% 40:49) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "40-49") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP50_59 <- asERP %>% 
+  filter(sex == "all", age %in% 50:59) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "50-59") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP60_69 <- asERP %>% 
+  filter(sex == "all", age %in% 60:69) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "60-69") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP70 <- asERP %>% 
+  filter(sex == "all", age > 70) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "70+") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP <- bind_rows(ageERP20, ageERP20_29, ageERP30_39, ageERP40_49,
+  ageERP50_59, ageERP60_69, ageERP70) %>%
+  arrange(year, age) %>% 
+  rename(population = age)
+
+# Combine all into file data frame
+prospectionERP <- bind_rows(stateERP, sexERP, ageERP) %>%
+  arrange(year) %>%
+  select(population, year, erp)
+
+# Save the final cleaned data set 
+write.csv(erpasData, file = file.path(cleanDataFolder,
+  paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
+  row.names = FALSE)
+
+write.csv(erpasData, file = file.path(cascadeDataFolder,
+  paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
   row.names = FALSE)
 
 ```
