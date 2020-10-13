@@ -83,7 +83,7 @@ rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data",
   "National HIV Registry", "Cascades")
 
 rawDataFile <- file.path(rawDataDirectory, paste0(toString(yearAnalysis), 
-  "_NHR_FULL_2020-09-11-incomplete.dta")) 
+  "_NHR_FULL_b.dta")) 
 # De-identified output file name
 cleanDataFile <- file.path(rawDataDirectory, 
   paste0("cascadeHIVnotifications-raw-", toString(yearAnalysis), ".csv"))

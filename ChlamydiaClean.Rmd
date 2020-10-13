@@ -44,7 +44,7 @@ cascadeDataFolder <- file.path(basePath,"project_care_cascades",
   "Chlamydia", "data")
 
 # Primary script parameters - data year 
-dataYear <- 2017
+dataYear <- 2018
 
 ```
 
@@ -655,6 +655,118 @@ if (dataYear == 2017) {
   
 }
 ```
+
+```{r re-testing ACCESS - 2018}
+if (dataYear == 2018) {
+  # ACCESS re-testing data
+  dataStartYear <- 2009
+  mergeRemote <-TRUE # add remote and regional data
+  
+  # Raw testing file
+  rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data_CT-", 
+    toString(dataYear), ".xlsx"))
+  
+  # Load raw re-testing data
+  chlamRetest <- read_excel(rawDataTreatment, sheet = 1, skip = 2,
+    col_names = FALSE)
+  
+  # Clean up data ----------------------------------------------------------
+  
+  newNames <- c("context", "region", "sex", "indicator",
+    as.character(dataStartYear:dataYear))
+  
+  chlamRetest <- chlamRetest %>%
+    rename_at(1:length(newNames), function(x) newNames) %>%
+    fill(context, region, sex) %>%
+    gather(5:length(newNames), key = "year", value = "data") %>%
+    spread(indicator, data) %>%
+    rename_at(5:7, function(x) c("diagnoses", "retested", 
+      "prop_retested")) %>%
+    # filter(year == dataYear) %>%
+    mutate(context = case_when(context == "General practices" ~ "gp", 
+      context == "Sexual health clinics" ~ "shc")) %>%
+    mutate(sex = tolower(sex)) %>%
+    # filter(year == dataYear) %>%
+    replace(is.na(.), 0)
+  
+  # Do overall calculations
+  chlamRetest <- chlamRetest %>%
+    group_by(region, context, year) %>%
+    summarise(diagnoses = sum(diagnoses), retested = sum(retested)) %>%
+    ungroup() %>%
+    mutate(sex = "all") %>%
+    select(region, context, sex, year, diagnoses, retested) %>%
+    bind_rows(chlamRetest) %>%
+    arrange(region, context, sex)
+  
+  if (mergeRemote) {
+    # Add another set of rows for regional+remote data
+    chlamRetest <- chlamRetest %>%
+      filter(region %in% c("regional", "remote")) %>%
+      group_by(context, year, sex) %>%
+      summarise(diagnoses = sum(diagnoses), retested = sum(retested)) %>%
+      ungroup() %>%
+      mutate(region = "regional+remote") %>%
+      select(region, context, sex, year, diagnoses, retested) %>%
+      bind_rows(chlamRetest, .)
+  }
+ 
+  # Now calculate proportion retest and lower and upper bound --------------
+  chlamRetest <- chlamRetest %>%
+    mutate(prop_retested = retested / diagnoses) #%>%
+    # mutate(propLower = ifelse(diagnoses != 0, 
+      # LowerProp(retested, diagnoses), 0))
+
+  
+  # Need to remove NAs to calculate upper and lower 95% confidence intervals
+  # using prop.test
+  
+  LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
+  UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
+  
+  indices <- (!is.na(chlamRetest$retested) &
+      (chlamRetest$diagnoses != 0))
+  
+  propLower <- mapply(LowerProp, chlamRetest$retested[indices],
+    chlamRetest$diagnoses[indices])
+  propUpper <- mapply(UpperProp, chlamRetest$retested[indices],
+    chlamRetest$diagnoses[indices])
+  
+  chlamRetest$prop_lower <- NA
+  chlamRetest$prop_upper <- NA
+  
+  chlamRetest[indices, ]$prop_lower <- propLower
+  chlamRetest[indices, ]$prop_upper <- propUpper
+  
+  # Replace 0/0 calculation with NA
+  chlamRetest[!indices, ]$prop_retested <- NA
+  
+  # Save SHC data for rangec
+  # chlamRetestRange <- chlamRetest %>% 
+  #   filter(context == "shc", region != "regional+remote") %>%
+  #   mutate(period = "42-180") %>%
+  #   select(region, context, sex, year, diagnoses, period, retested, 
+  #     prop_retested, prop_lower, prop_upper)
+
+  # Arrange into the required format
+  chlamRetest <- chlamRetest %>%
+    arrange(match(region, c("urban", "regional", "remote"))) %>%
+    arrange(desc(context)) %>%
+    arrange(desc(sex)) %>%
+    arrange(desc(year))
+    
+  # Write to file 
+  write.csv(chlamRetest, file = file.path(cleanDataFolder,
+    paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
+    row.names = FALSE)
+  
+  # write.csv(chlamRetest, file = file.path(cascadeDataFolder,
+  #   paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
+    # row.names = FALSE)
+  
+}
+```
+
 
 
 ```{r retesting ACCEPt}

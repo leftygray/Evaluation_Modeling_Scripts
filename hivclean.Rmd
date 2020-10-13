@@ -122,27 +122,27 @@ if (dataYear < 2017) {
 # been done within 3 months. From 2014 the date of CD4 count confirmatory 
 # test was recorded instead
 
-hivdata$linked <- NA
+hivdata$linked <- as.character(NA)
 
 if (dataYear <= 2013) {
   hivdata[is.na(hivdata$cd4count), ]$linked <- "no"
   hivdata[!is.na(hivdata$cd4count), ]$linked <- "yes"
 } else {
-  hivdata[is.na(hivdata$cd4count) & hivdata$yearhiv < 2014, ]$linked <-
+  hivdata$linked[is.na(hivdata$cd4count) & hivdata$yearhiv < 2014] <-
     "no"
-  hivdata[!is.na(hivdata$cd4count) & hivdata$yearhiv < 2014, ]$linked <-
+  hivdata$linked[!is.na(hivdata$cd4count) & hivdata$yearhiv < 2014] <-
     "yes"
   
-  hivdata[hivdata$yearhiv >= 2014 & is.na(hivdata$cd4date -
-      hivdata$datediagnosis),]$linked <- "no"
+  hivdata$linked[hivdata$yearhiv >= 2014 & is.na(hivdata$cd4date -
+      hivdata$datediagnosis)] <- "no"
   
-  hivdata[hivdata$yearhiv >= 2014 & !is.na(hivdata$cd4date -
+  hivdata$linked[hivdata$yearhiv >= 2014 & !is.na(hivdata$cd4date -
       hivdata$datediagnosis) & (hivdata$cd4date - hivdata$datediagnosis) <=
-      90,]$linked <- "yes"
+      90] <- "yes"
   
-  hivdata[hivdata$yearhiv >= 2014 & !is.na(hivdata$cd4date -
+  hivdata$linked[hivdata$yearhiv >= 2014 & !is.na(hivdata$cd4date -
       hivdata$datediagnosis) & (hivdata$cd4date - hivdata$datediagnosis) >
-      90,]$linked <- "no"
+      90] <- "no"
 }
 
 # Reclassification of exposure to the broad surveillance categories - may
@@ -368,8 +368,8 @@ department of health since 2019.
 ```{r Prospection (DEPRECATED)}
 # Raw Prospection file
 
-if (dataYear <= 2018) {
-  rawPharmDash <- file.path(dataPath,paste("PharmDash_HIV_Patients_Treatment-", toString(dataYear), ".csv",sep=""))
+if (dataYear <= 2019) {
+  rawPharmDash <- file.path(dataPath,paste("PharmDash_HIV_Patients_Treatment-", dataYear, ".csv",sep=""))
   
   # Data only reliable from 2013
   startyear <- 2013
