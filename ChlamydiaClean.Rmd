@@ -40,25 +40,25 @@ dataPath <- file.path(basePath,"data","Chlamydia", "raw")
 cleanDataFolder <- file.path(basePath,"data", "Chlamydia") # Cleaned data 
 
 # Additional cleaned data folders for copies
-cascadeDataFolder <- file.path(basePath,"project_care_cascades", 
-  "Chlamydia", "data")
+cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
+  "Australian Care Cascades - Documents", "Chlamydia", "data")
 
 # Primary script parameters - data year 
-dataYear <- 2018
+dataYear <- 2019
 
 ```
 
 ## Chlamydia notifications
 
 ```{r notifications}
-# Raw HIV notifications file
-# Only works for 2014 at this stage
+# Raw notifications file
+# Only works for 2014 and from 2019 at this stage
 if (dataYear == 2014) {
   
   rawdata <- file.path(dataPath, paste0("ChlamydiaNotifications-",
     toString(dataYear), ".csv"))
   
-  # Load the raw HIV notifications file and clean it up
+  # Load the raw notifications file and clean it up
   chlamdata <- read.csv(rawdata) 
   
   ### Clean up data
@@ -211,6 +211,168 @@ if (dataYear == 2014) {
     paste0("chlamnotifications_clean-", toString(dataYear), ".csv")), 
     row.names = FALSE)
   
+} else if (dataYear >= 2019) {
+  
+  rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
+  "NNDSS", "SOURCE")
+
+  rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
+  "NNDSS_MASTER.csv") 
+  
+  # Load the raw NNDSS notifications file and clean it up
+  nndssdata <- read.csv(rawDataFile) 
+  
+  # Extract the chlamydia notifications and key variables. 
+  # Clean up dataframe
+  chlamdata <- tibble(nndssdata) %>%
+    filter(diseasecode == 7) %>%
+    select(age = AGE, sex = SEX, year = YEAR) %>%
+    mutate(sex = tolower(sex))
+
+  # Check for missing values and replace with NAs. 
+  # Replace '-1's with NAs for age keep missing for sex
+  chlamdata[chlamdata$age == -1,]$age <- NA
+  
+  ### Group into the required age groups
+  temp1 <- chlamdata %>% 
+    filter(age < 15) %>%
+    group_by(sex, year) %>% 
+    summarise(n = n()) %>%
+    spread(sex, n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female < 15 yrs" = female, "male < 15 yrs" = male, 
+      "missing < 15 yrs" = missing)
+  
+  temp15 <- chlamdata %>% 
+    filter(age >= 15 & age <= 19) %>%
+    group_by(sex,year) %>% 
+    summarise(n = n()) %>%
+    spread(sex,n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female 15-19 yrs" = female, "male 15-19 yrs" = male, 
+      "missing 15-19 yrs" = missing)
+  
+  temp20 <- chlamdata %>% 
+    filter(age >= 20 & age <= 24) %>%
+    group_by(sex,year) %>% 
+    summarise(n = n()) %>%
+    spread(sex, n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female 20-24 yrs" = female, "male 20-24 yrs" = male, 
+      "missing 20-24 yrs" = missing)
+  
+  temp25 <- chlamdata %>% 
+    filter(age >= 25 & age <= 29) %>%
+    group_by(sex,year) %>% 
+    summarise(n = n()) %>%
+    spread(sex, n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female 25-29 yrs" = female, "male 25-29 yrs" = male, 
+      "missing 25-29 yrs" = missing)
+  
+  temp30 <- chlamdata %>% 
+    filter(age >= 30 & age <= 34) %>%
+    group_by(sex,year) %>% 
+    summarise(n = n()) %>%
+    spread(sex, n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female 30-34 yrs" = female, "male 30-34 yrs" = male, 
+      "missing 30-34 yrs" = missing)
+  
+  temp35 <- chlamdata %>% 
+    filter(age >= 35) %>%
+    group_by(sex,year) %>% 
+    summarise(n = n()) %>%
+    spread(sex, n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female > 34 yrs" = female, "male > 34 yrs" = male, 
+      "missing >34 yrs" = missing)
+  
+  tempAll <- chlamdata %>% 
+    group_by(sex,year) %>% 
+    summarise(n = n()) %>%
+    spread(sex, n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female all" = female, "male all" = male, 
+      "missing all" = missing)
+  
+  tempMiss <- chlamdata %>% 
+    filter(is.na(age)) %>%
+    group_by(sex, year) %>% 
+    summarise(n = n()) %>%
+    spread(sex, n) %>%
+    # select(-year) %>%
+    select(year, male, everything()) %>%
+    rename("female no age" = female, "male no age" = male, 
+      "missing no age" = missing)
+  
+  #Bind into a wide data frame
+  chlamNotifications <- bind_cols(temp1, temp15, temp20, temp25, temp30,
+    temp35, tempAll, tempMiss)
+  
+  # Re-arrange to match model input
+  chlamNotifications <- chlamNotifications %>% 
+    select(year = "year...1", starts_with("male"), starts_with("female"),
+      everything()) %>%
+    select(-contains("..."))
+  
+  ### Sort out missing data
+  
+  # Work out proportions in each age group each year 
+  subNotifications <- chlamNotifications %>%
+    select(ends_with("yrs"), -starts_with("missing")) 
+  
+  propNotifications <- subNotifications/apply(subNotifications, 1, sum, 
+    na.rm = TRUE)
+  
+  allNotifications <- chlamNotifications %>%
+    select(ends_with("all"), -starts_with("missing"))
+  
+  propNotificationsAll <- allNotifications/apply(allNotifications, 1, sum, 
+    na.rm = TRUE)
+  
+  propNotifications <- cbind(propNotifications, propNotificationsAll)
+  propNotifications <- select(propNotifications, 
+    starts_with("male"), everything())
+  
+  # Distribute missing notifications across age groups
+  missingNotifications <- chlamNotifications %>% 
+    select(-ends_with("yrs"), -starts_with("female all"), 
+      -starts_with("male all")) %>%
+    apply(1, sum, na.rm = TRUE)
+  
+  extraNotifications <- round(propNotifications * missingNotifications)
+  
+  ### Estimate final number of notifications
+  knownNotifications <- chlamNotifications %>%
+    select(-starts_with("missing"), -ends_with("age"))
+  
+  finalNotifications <- knownNotifications
+  finalNotifications[, 2:ncol(finalNotifications)] <- 
+    knownNotifications[, 2:ncol(finalNotifications)] + extraNotifications
+  
+  # A little test to see how important extra notifications are
+  propKnown <- knownNotifications/finalNotifications
+  
+  # Save cleaned chlamdata
+  write.csv(finalNotifications, file = file.path(cleanDataFolder,
+    paste0("chlamnotifications_clean-", toString(dataYear), ".csv")), 
+    row.names = FALSE)
+  
+  write.csv(finalNotifications, file = file.path(cascadeDataFolder,
+    dataYear, paste0("chlamnotifications_clean-", dataYear, ".csv")), 
+    row.names = FALSE)
+  
+  
+} else {
+ stop("Raw notifications file not available") 
 }
 ```
 
@@ -656,8 +818,8 @@ if (dataYear == 2017) {
 }
 ```
 
-```{r re-testing ACCESS - 2018}
-if (dataYear == 2018) {
+```{r re-testing ACCESS - 2018-2019}
+if (dataYear %in% 2018:2019) {
   # ACCESS re-testing data
   dataStartYear <- 2009
   mergeRemote <-TRUE # add remote and regional data
@@ -668,10 +830,9 @@ if (dataYear == 2018) {
   
   # Load raw re-testing data
   chlamRetest <- read_excel(rawDataTreatment, sheet = 1, skip = 2,
-    col_names = FALSE)
+    col_names = FALSE) 
   
-  # Clean up data ----------------------------------------------------------
-  
+  # Clean up data ---------------------------------------------------------
   newNames <- c("context", "region", "sex", "indicator",
     as.character(dataStartYear:dataYear))
   
@@ -711,15 +872,14 @@ if (dataYear == 2018) {
       bind_rows(chlamRetest, .)
   }
  
-  # Now calculate proportion retest and lower and upper bound --------------
+  # Now calculate proportion retest and lower and upper bound -------------
   chlamRetest <- chlamRetest %>%
     mutate(prop_retested = retested / diagnoses) #%>%
     # mutate(propLower = ifelse(diagnoses != 0, 
       # LowerProp(retested, diagnoses), 0))
 
-  
-  # Need to remove NAs to calculate upper and lower 95% confidence intervals
-  # using prop.test
+  # Need to remove NAs to calculate upper and lower 95% confidence
+  # intervals using prop.test
   
   LowerProp <- function(x, y) prop.test(x, y)[[6]][1]
   UpperProp <- function(x, y) prop.test(x, y)[[6]][2]
@@ -735,6 +895,9 @@ if (dataYear == 2018) {
   chlamRetest$prop_lower <- NA
   chlamRetest$prop_upper <- NA
   
+  chlamRetest <- data.frame(chlamRetest) # Needed to convert to dataframe
+                                         # from tibble for next lines to 
+                                         # work
   chlamRetest[indices, ]$prop_lower <- propLower
   chlamRetest[indices, ]$prop_upper <- propUpper
   
