@@ -700,6 +700,7 @@ sexERP <- asERP %>%
   summarise(erp = sum(erp)) %>% 
   rename(population = sex) %>%
   filter(population != "all") %>%
+  mutate(population = str_replace(population, "s", "")) %>%
   ungroup()
 
 ageERP20 <- asERP %>% 
@@ -769,11 +770,11 @@ prospectionERP <- bind_rows(stateERP, sexERP, ageERP) %>%
   select(population, year, erp)
 
 # Save the final cleaned data set 
-write.csv(erpasData, file = file.path(cleanDataFolder,
+write.csv(prospectionERP, file = file.path(cleanDataFolder,
   paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
   row.names = FALSE)
 
-write.csv(erpasData, file = file.path(cascadeDataFolder,
+write.csv(prospectionERP, file = file.path(cascadeDataFolder,
   paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
   row.names = FALSE)
 
