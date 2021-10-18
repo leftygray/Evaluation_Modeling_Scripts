@@ -33,6 +33,7 @@ folder:
 require(LeftysRpkg)
 LoadLibrary(tidyverse)
 LoadLibrary(readxl)
+LoadLibrary(haven)
 
 # Key folder paths
 basePath <- file.path(dirname(getwd()))
@@ -44,7 +45,7 @@ cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "Chlamydia", "data")
 
 # Primary script parameters - data year 
-dataYear <- 2019
+dataYear <- 2020
 
 ```
 
@@ -217,15 +218,21 @@ if (dataYear == 2014) {
   "NNDSS", "SOURCE")
 
   rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
-  "NNDSS_MASTER.csv") 
+  "NNDSS_MASTER.dta") 
   
   # Load the raw NNDSS notifications file and clean it up
-  nndssdata <- read.csv(rawDataFile) 
+  nndssdata <- read_dta(rawDataFile) 
+  # nndssdata <- read.csv(rawDataFile) 
   
   # Extract the chlamydia notifications and key variables. 
   # Clean up dataframe
   chlamdata <- tibble(nndssdata) %>%
     filter(diseasecode == 7) %>%
+    select(age = AGE, sex = SEX, year = YEAR) %>%
+    mutate(sex = tolower(sex))
+  
+  ngdata <- tibble(nndssdata) %>%
+    filter(diseasecode == 11) %>%
     select(age = AGE, sex = SEX, year = YEAR) %>%
     mutate(sex = tolower(sex))
 
@@ -377,6 +384,8 @@ if (dataYear == 2014) {
 ```
 
 ## Chlamydia tests
+
+Mostly deprecated as the data is now provided in the right format. 
 
 ```{r tests}
 
