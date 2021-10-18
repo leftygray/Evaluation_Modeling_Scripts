@@ -39,7 +39,7 @@ source("TidyLongitudinal.R")
 states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2019 # Annual data from 2014
+dataYear <- 2020 # Annual data from 2014
 
 ```
 
