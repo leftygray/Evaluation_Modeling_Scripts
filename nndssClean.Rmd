@@ -1,0 +1,208 @@
+NNDSS notificatons data extraction 
+==================================
+
+Richard T. Gray
+
+This script is used to load and clean the raw NNDSS data received
+from DOH and extract key estimates. These data are used for the STI cascade 
+calculations. 
+
+
+```{r Initialization}
+# Restart R and set working directory to source file location
+
+# Libraries for data manipulation
+require(LeftysRpkg)
+LoadLibrary(tidyverse)
+LoadLibrary(readxl)
+
+# Key folder paths
+basePath <- file.path(dirname(getwd()))
+
+# Primary script parameters - data year 
+dataYear <- 2019
+
+```
+
+```{r Load and clean data}
+  rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
+  "NNDSS", "SOURCE")
+
+  rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
+  "NNDSS_MASTER.csv") 
+  
+  # Load the raw NNDSS notifications file and clean it up
+  nndssdata <- read.csv(rawDataFile) 
+  
+  # Extract the chlamydia and NG notifications and key variables. 
+  # Clean up dataframe
+  # diseasecode
+  # 7 = CT
+  # 11 = NG 
+  chlamdata <- tibble(nndssdata) %>%
+    filter(diseasecode == 7) %>%
+    select(age = AGE, sex = SEX, year = YEAR, remote = REMOTE) %>%
+    mutate(sex = tolower(sex))
+  
+  ngdata <- tibble(nndssdata) %>%
+    filter(diseasecode == 11) %>%
+    select(age = AGE, sex = SEX, year = YEAR, remote = REMOTE,
+      sexualexposure, state = STATE) %>%
+    mutate(sex = tolower(sex))
+```
+
+```{r Extract NG numbers}
+
+# Number of NG notifications in males
+ngTotal <- ngdata %>% filter(sex == "male", year == dataYear) %>% nrow()
+print(ngTotal)
+
+# Number in major cities
+ngMajorCities <- ngdata %>% 
+  filter(sex == "male", year == dataYear, 
+    remote == "Major Cities of Australia" ) %>% 
+  nrow()
+print(ngMajorCities)
+
+# Number where region is missing
+ngMissing <- ngdata %>% 
+  filter(sex == "male", year == dataYear, 
+    remote == "Missing" ) %>% 
+  nrow()
+print(ngMissing)
+
+# Number in other areas
+ngOther <- ngTotal - ngMajorCities - ngMissing
+print(ngOther)
+
+```
+
+```{r GBM numbers for enhanced data}
+
+# Proportion of male diagnoses in GBM - major cities
+ngMajorCities <- ngdata %>% 
+  filter(sex == "male", year == dataYear, 
+    remote == "Major Cities of Australia", remote != "Missing") %>%
+  filter(!is.na(sexualexposure)) %>% 
+  filter(sexualexposure %in% c(1:3)) %>%
+  nrow()
+  
+ngGBMMajorCities <- ngdata %>% 
+  filter(sex == "male", year == dataYear, 
+    remote == "Major Cities of Australia", remote != "Missing") %>%
+  filter(!is.na(sexualexposure)) %>%
+  filter(sexualexposure %in% c(2,3)) %>%
+  nrow()
+
+print(ngGBMMajorCities/ngMajorCities)
+
+# Proportion of male diagnoses in GBM - non-Major cities
+ngRegions <- ngdata %>% 
+  filter(sex == "male", year == dataYear, 
+    remote != "Major Cities of Australia", remote != "Missing") %>%
+  filter(!is.na(sexualexposure)) %>% 
+  filter(sexualexposure %in% c(1:3)) %>%
+  nrow()
+  
+ngGBMRegions <- ngdata %>% 
+  filter(sex == "male", year == dataYear, 
+    remote != "Major Cities of Australia", remote != "Missing" ) %>%
+  filter(!is.na(sexualexposure)) %>%
+  filter(sexualexposure %in% c(2,3)) %>%
+  nrow()
+
+print(ngGBMRegions/ngRegions)
+
+```
+
+```{r Proportion CT by region}
+
+ctOverall <- chlamdata %>%
+  filter(year == dataYear, remote != "Missing")
+
+ctUrban <- ctOverall %>%
+  filter(remote %in% "Major Cities of Australia") %>%
+  nrow()
+  
+print(ctUrban/nrow(ctOverall))
+
+ctRegional <- ctOverall %>%
+  filter(remote %in% c("Inner Regional Australia", 
+    "Outer Regional Australia")) %>%
+  nrow()
+
+print(ctRegional/nrow(ctOverall))
+
+ctRemote <- ctOverall %>%
+  filter(remote %in% c("Remote Australia", "Very Remote Australia")) %>%
+  nrow()
+
+print(ctRemote/nrow(ctOverall))
+
+```
+
+```{r NG notifications for young people}
+
+ngTest <- ngdata %>% 
+  filter(year >= 2010) %>%
+  select(age, sex, year) %>%
+  group_by(age, sex, year) %>%
+  summarise(notifications = n()) %>%
+  ungroup()
+
+# Missing data:
+# ngTest %>% filter(age == -1) %>% nrow() # 25 with missing age
+# ngTest %>% filter(sex == -1) %>% nrow() # 0 with missing sex
+
+ngTest <- ngTest %>% 
+  filter(age != -1) 
+
+# Now calculate groups we need
+
+ageSeq <- (0:15)
+sexTarget <- "female"
+
+ngDiags <- function(sexTarget, ageSeq, label) {
+  
+  df <- ngTest %>%
+    filter(sex == sexTarget, age %in% ageSeq) %>%
+    group_by(year) %>%
+    summarise(!!label := sum(notifications)) 
+  
+  return(df)
+  
+}
+
+# Females
+ngFemales1 <- ngDiags("female", (0:15), "female < 15 yrs")
+ngFemales2 <- ngDiags("female", (15:19), "female 15-19 yrs")
+ngFemales3 <- ngDiags("female", (20:24), "female 20-24 yrs")
+ngFemales4 <- ngDiags("female", (25:29), "female 25-29 yrs")
+ngFemales5 <- ngDiags("female", (30:34), "female 30-34 yrs")
+ngFemales6 <- ngDiags("female", (35:150), "female > 34 yrs")
+ngFemales7 <- ngDiags("female", (0:150), "female all")
+
+# Males
+ngMales1 <- ngDiags("male", (0:15), "male < 15 yrs")
+ngMales2 <- ngDiags("male", (15:19), "male 15-19 yrs")
+ngMales3 <- ngDiags("male", (20:24), "male 20-24 yrs")
+ngMales4 <- ngDiags("male", (25:29), "male 25-29 yrs")
+ngMales5 <- ngDiags("male", (30:34), "male 30-34 yrs")
+ngMales6 <- ngDiags("male", (35:150), "male > 34 yrs")
+ngMales7 <- ngDiags("male", (0:150), "male all")
+
+# Merge data frames
+ngNotifications <- bind_cols(ngMales1, select(ngMales2, -year), 
+  select(ngMales3, -year), select(ngMales4, -year), 
+  select(ngMales5, -year), select(ngMales6, -year), 
+  select(ngMales7, -year), select(ngFemales1, -year),
+  select(ngFemales2, -year), select(ngFemales3, -year),
+  select(ngFemales4, -year), select(ngFemales5, -year),
+  select(ngFemales6, -year), select(ngFemales7, -year))
+
+write.csv(ngNotifications, "notifications-ng.csv")
+
+
+
+```
+
