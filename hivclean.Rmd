@@ -83,7 +83,8 @@ if (dataYear <= 2013) {
 # Rename and order variables for ease of use
 hivdata <- hivdata %>%
   rename(datediagnosis = datehiv, agehiv = age_hiv, exposure = expcode) %>%
-  select(state, postcode, everything()) 
+  select(state, postcode, everything()) %>%
+  as_tibble()
 
 if (dataYear > 2013){
   hivdata <- rename(hivdata, cd4date = cd4_date)
@@ -236,9 +237,10 @@ if (dataYear < 2017) {
   # 2019   
   hivdata[which(hivdata$rob == "SE Asia"), ]$countrygroup <- "bornsea"
   hivdata[which(hivdata$rob == "SSA"), ]$countrygroup <- "bornssa"
-  hivdata[which(hivdata$rob %in% c("C America", "Caribbean", 
-    "N Africa & ME", "N America", "NE Asia", "NW Europe", 
-    "S & C Asia", "S & E Europe", "S America")), ]$countrygroup <-
+  hivdata[which(hivdata$rob %in% c("C America", "S America", 
+    "Caribbean")), ]$countrygroup <- "bornsca"
+  hivdata[which(hivdata$rob %in% c("N Africa & ME", "N America", "NE Asia", 
+    "NW Europe", "S & C Asia", "S & E Europe")), ]$countrygroup <-
     "othercob"
 }
 
