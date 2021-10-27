@@ -15,12 +15,13 @@ calculations.
 require(LeftysRpkg)
 LoadLibrary(tidyverse)
 LoadLibrary(readxl)
+LoadLibrary(haven)
 
 # Key folder paths
 basePath <- file.path(dirname(getwd()))
 
 # Primary script parameters - data year 
-dataYear <- 2019
+dataYear <- 2020
 
 ```
 
@@ -28,11 +29,14 @@ dataYear <- 2019
   rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
   "NNDSS", "SOURCE")
 
+  # rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
+  # "NNDSS_MASTER.csv") 
   rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
-  "NNDSS_MASTER.csv") 
+  "NNDSS_MASTER.dta") 
   
   # Load the raw NNDSS notifications file and clean it up
-  nndssdata <- read.csv(rawDataFile) 
+  # nndssdata <- read.csv(rawDataFile) 
+  nndssdata <- read_dta(rawDataFile) 
   
   # Extract the chlamydia and NG notifications and key variables. 
   # Clean up dataframe
