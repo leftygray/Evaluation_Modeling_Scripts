@@ -439,7 +439,7 @@ if (dataYear <= 2019) {
   rawPBSfile <- file.path(dataPath,paste("pbs", dataYear, ".csv",sep=""))
   
   # Data only reliable from 2013
-  startyear <- 2014
+  startyear <- 2013 # Note PBS data from 2014. Estimates from 2013 from PharmDash
   
   # Load the raw HIV ART data and separate out the two assumptions. 
   pbsData <- read_csv(rawPBSfile)
