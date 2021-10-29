@@ -359,24 +359,22 @@ write.csv(ahodData, file = file.path(cascadeDataFolder,
 
 ```
 
-# FOLLWOING ARE DEPRECATED
+## ART data
 
-## Prospection PharmDash HIV Treatment Data (DEPRECATED)
+Prospection PharmDash HIV Treatment Data (DEPRECATED) - Replaced by 100% 
+PBS data now obtained directly from the department of health since 2019.
+ 
 
-Description of the output from Prospection and the cleaning process. This 
-is now deprecated as we are getting 100% PBS data now directly from the 
-department of health since 2019. 
-
-```{r Prospection (DEPRECATED)}
-# Raw Prospection file
-
+```{r ART data}
 if (dataYear <= 2019) {
-  rawPharmDash <- file.path(dataPath,paste("PharmDash_HIV_Patients_Treatment-", dataYear, ".csv",sep=""))
+  # Raw Prospection file
+  rawPharmDash <- file.path(dataPath, 
+    paste("PharmDash_HIV_Patients_Treatment-", dataYear, ".csv",sep=""))
   
   # Data only reliable from 2013
   startyear <- 2013
   
-  # Load the raw HIV notifications file and clean it up. The exported data from 
+  # Load the raw HIV ART data and clean it up. The exported data from 
   # PharmDash is a little messy. Need to skip the first 3 rows. Then tidy up and 
   # extract the data we want. Only valuable from the year 2013
   pharmData <- read.csv(rawPharmDash,skip = 16, na.strings = c("NA", "")) # Skip used to be 3 
@@ -435,7 +433,45 @@ if (dataYear <= 2019) {
       ".csv")), row.names = FALSE)
 } else {
   
-  print("DEPRECATED - Prospection data no longer used from 2019") 
+  # Clean PBS ART data from the 100% PBS sample. 
+  # Prospection data no longer used from 2019
+  
+  rawPBSfile <- file.path(dataPath,paste("pbs", dataYear, ".csv",sep=""))
+  
+  # Data only reliable from 2013
+  startyear <- 2014
+  
+  # Load the raw HIV ART data and separate out the two assumptions. 
+  pbsData <- read_csv(rawPBSfile)
+  pbsDataLower <- pbsData %>%
+    filter(assumption == "ART > 60 days apart")
+  pbsData <- pbsData %>%
+    filter(assumption == "Any ART")
+  
+  # Clean up and save
+  pbsData <- pbsData %>%
+    select(-source, -assumption, num_range("X",startyear:dataYear))
+
+  pbsDataLower <- pbsDataLower %>%
+    select(-source, -assumption, num_range("X",startyear:dataYear))
+  
+  # Finally have it a relatively tidy format so save to output file
+  write.csv(pbsData, file = file.path(cleanDataFolder, 
+    paste0("pbs_art-", toString(dataYear), 
+      ".csv")), row.names = FALSE)
+  
+  write.csv(pbsData, file = file.path(cascadeDataFolder, 
+    paste0("pbs_art_clean-", toString(dataYear), 
+      ".csv")), row.names = FALSE)
+  
+  
+  write.csv(pbsData, file = file.path(cleanDataFolder, 
+    paste0("pbs_art-lower-", toString(dataYear), 
+      ".csv")), row.names = FALSE)
+  
+  write.csv(pbsData, file = file.path(cascadeDataFolder, 
+    paste0("pbs_art-lower_clean-", toString(dataYear), 
+      ".csv")), row.names = FALSE)
   
 }
 
