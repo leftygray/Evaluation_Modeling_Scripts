@@ -465,11 +465,11 @@ if (dataYear <= 2019) {
       ".csv")), row.names = FALSE)
   
   
-  write.csv(pbsData, file = file.path(cleanDataFolder, 
+  write.csv(pbsDataLower, file = file.path(cleanDataFolder, 
     paste0("pbs_art-lower-", toString(dataYear), 
       ".csv")), row.names = FALSE)
   
-  write.csv(pbsData, file = file.path(cascadeDataFolder, 
+  write.csv(pbsDataLower, file = file.path(cascadeDataFolder, 
     paste0("pbs_art-lower_clean-", toString(dataYear), 
       ".csv")), row.names = FALSE)
   

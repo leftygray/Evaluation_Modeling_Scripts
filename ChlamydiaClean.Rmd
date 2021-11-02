@@ -939,10 +939,10 @@ if (dataYear %in% 2018:2019) {
 }
 ```
 
-```{r re-testing ACCESS - 2021}
-if (dataYear == 2021) {
+```{r re-testing ACCESS - 2021 ASR}
+if (dataYear == 2020) {
   # ACCESS re-testing data
-  dataStartYear <- 2010
+  dataStartYear <- 2011
   mergeRemote <-TRUE # add remote and regional data
   
   rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
