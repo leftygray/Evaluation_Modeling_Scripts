@@ -26,57 +26,71 @@ dataYear <- 2020
 ```
 
 ```{r Load and clean data}
-  rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
+rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data", 
   "NNDSS", "SOURCE")
 
-  # rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
-  # "NNDSS_MASTER.csv") 
-  rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
+# rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
+# "NNDSS_MASTER.csv") 
+rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
   "NNDSS_MASTER.dta") 
-  
-  # Load the raw NNDSS notifications file and clean it up
-  # nndssdata <- read.csv(rawDataFile) 
-  nndssdata <- read_dta(rawDataFile) 
-  
-  # Extract the chlamydia and NG notifications and key variables. 
-  # Clean up dataframe
-  # diseasecode
-  # 7 = CT
-  # 11 = NG 
-  chlamdata <- tibble(nndssdata) %>%
-    filter(diseasecode == 7) %>%
-    select(age = AGE, sex = SEX, year = YEAR, remote = REMOTE) %>%
-    mutate(sex = tolower(sex))
-  
-  ngdata <- tibble(nndssdata) %>%
-    filter(diseasecode == 11) %>%
-    select(age = AGE, sex = SEX, year = YEAR, remote = REMOTE,
-      sexualexposure, state = STATE) %>%
-    mutate(sex = tolower(sex))
+
+# Load the raw NNDSS notifications file and clean it up
+# nndssdata <- read.csv(rawDataFile) 
+nndssdata <- read_dta(rawDataFile) 
+
+# Extract the chlamydia and NG notifications and key variables. 
+# Clean up dataframe
+# diseasecode
+# 7 = CT
+# 11 = NG 
+chlamdata <- tibble(nndssdata) %>%
+  filter(diseasecode == 7) %>%
+  select(age = AGE, sex = SEX, year = YEAR, remote = REMOTE) %>%
+  mutate(sex = tolower(sex))
+
+ngdata <- tibble(nndssdata) %>%
+  filter(diseasecode == 11) %>%
+  select(age = AGE, sex = SEX, year = YEAR, remote = REMOTE,
+    stisexualexposure, state = STATE) %>%
+  mutate(sex = tolower(sex),
+    sexualexposure = 0)
+
+ngdata$sexualexposure[ngdata$stisexualexposure == "PERSON(S) OF OPPOSITE SEX ONLY"] <- 1
+ngdata$sexualexposure[ngdata$stisexualexposure == "PERSON(S) OF SAME SEX ONLY"] <- 2
+ngdata$sexualexposure[ngdata$stisexualexposure == "PERSON(S) OF BOTH SEXES"] <- 3
+ngdata$sexualexposure[ngdata$stisexualexposure == "SEXUAL EXPOSURE UNKNOWN"] <- 4
+ngdata$sexualexposure[ngdata$stisexualexposure == "NO SEXUAL CONTACT"] <- 5
+
 ```
 
 ```{r Extract NG numbers}
 
-# Number of NG notifications in males
-ngTotal <- ngdata %>% filter(sex == "male", year == dataYear) %>% nrow()
+# Number of NG notifications in males last three years
+ngTotal <- ngdata %>% 
+  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2)) %>% 
+  group_by(year) %>%
+  summarise(n = n())
 print(ngTotal)
 
 # Number in major cities
 ngMajorCities <- ngdata %>% 
-  filter(sex == "male", year == dataYear, 
+  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
     remote == "Major Cities of Australia" ) %>% 
-  nrow()
+  group_by(year) %>%
+  summarise(n = n())
 print(ngMajorCities)
 
 # Number where region is missing
 ngMissing <- ngdata %>% 
-  filter(sex == "male", year == dataYear, 
+  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
     remote == "Missing" ) %>% 
-  nrow()
+  group_by(year) %>%
+  summarise(n = n())
 print(ngMissing)
 
 # Number in other areas
-ngOther <- ngTotal - ngMajorCities - ngMissing
+ngOther <- tibble(year = c(dataYear, dataYear - 1, dataYear - 2),
+  n = ngTotal$n - ngMajorCities$n - ngMissing$n)
 print(ngOther)
 
 ```
@@ -85,63 +99,73 @@ print(ngOther)
 
 # Proportion of male diagnoses in GBM - major cities
 ngMajorCities <- ngdata %>% 
-  filter(sex == "male", year == dataYear, 
+  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
     remote == "Major Cities of Australia", remote != "Missing") %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
-  nrow()
-  
+  group_by(year) %>%
+  summarise(n = n())
+
 ngGBMMajorCities <- ngdata %>% 
-  filter(sex == "male", year == dataYear, 
+  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
     remote == "Major Cities of Australia", remote != "Missing") %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
-  nrow()
+  group_by(year) %>%
+  summarise(n = n())
 
-print(ngGBMMajorCities/ngMajorCities)
+print(ngGBMMajorCities$n/ngMajorCities$n)
 
 # Proportion of male diagnoses in GBM - non-Major cities
 ngRegions <- ngdata %>% 
-  filter(sex == "male", year == dataYear, 
+  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2),  
     remote != "Major Cities of Australia", remote != "Missing") %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
-  nrow()
-  
+  group_by(year) %>%
+  summarise(n = n())
+
 ngGBMRegions <- ngdata %>% 
-  filter(sex == "male", year == dataYear, 
+  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
     remote != "Major Cities of Australia", remote != "Missing" ) %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
-  nrow()
+  group_by(year) %>%
+  summarise(n = n())
 
-print(ngGBMRegions/ngRegions)
+print(ngGBMRegions$n/ngRegions$n)
 
 ```
 
 ```{r Proportion CT by region}
 
 ctOverall <- chlamdata %>%
-  filter(year == dataYear, remote != "Missing")
+  filter(year %in% c((dataYear-2):dataYear), remote != "Missing") %>%
+  group_by(year) %>%
+  summarise(n = n())
 
-ctUrban <- ctOverall %>%
-  filter(remote %in% "Major Cities of Australia") %>%
-  nrow()
-  
-print(ctUrban/nrow(ctOverall))
+ctUrban <- chlamdata %>%
+  filter(year %in% c((dataYear-2):dataYear), remote %in% "Major Cities of Australia") %>%
+  group_by(year) %>%
+  summarise(n = n())
 
-ctRegional <- ctOverall %>%
-  filter(remote %in% c("Inner Regional Australia", 
+print(ctUrban$n/ctOverall$n)
+
+ctRegional <- chlamdata %>%
+  filter(year %in% c((dataYear-2):dataYear), remote %in% c("Inner Regional Australia", 
     "Outer Regional Australia")) %>%
-  nrow()
+  group_by(year) %>%
+  summarise(n = n())
 
-print(ctRegional/nrow(ctOverall))
+print(ctRegional$n/ctOverall$n)
 
-ctRemote <- ctOverall %>%
-  filter(remote %in% c("Remote Australia", "Very Remote Australia")) %>%
-  nrow()
+ctRemote <- chlamdata %>%
+  filter(year %in% c((dataYear-2):dataYear), 
+    remote %in% c("Remote Australia", "Very Remote Australia")) %>%
+  group_by(year) %>%
+  summarise(n = n())
 
-print(ctRemote/nrow(ctOverall))
+print(ctRemote$n/ctOverall$n)
 
 ```
 

@@ -230,11 +230,11 @@ if (dataYear == 2014) {
     filter(diseasecode == 7) %>%
     select(age = AGE, sex = SEX, year = YEAR) %>%
     mutate(sex = tolower(sex))
-  
-  ngdata <- tibble(nndssdata) %>%
-    filter(diseasecode == 11) %>%
-    select(age = AGE, sex = SEX, year = YEAR) %>%
-    mutate(sex = tolower(sex))
+  # 
+  # ngdata <- tibble(nndssdata) %>%
+  #   filter(diseasecode == 11) %>%
+  #   select(age = AGE, sex = SEX, year = YEAR) %>%
+  #   mutate(sex = tolower(sex))
   
   # Check for missing values and replace with NAs. 
   # Replace '-1's with NAs for age keep missing for sex
@@ -1073,7 +1073,8 @@ if (dataYear == 2020) {
   # Extract data year and write to file ------------------------------------
   
   chlamRetest <- chlamRetest %>%
-    filter(year == dataYear)
+    filter(year %in% c((dataYear-2):dataYear)) %>%
+    arrange(year)
   
   # Write to file 
   write.csv(chlamRetest, file = file.path(cleanDataFolder,
