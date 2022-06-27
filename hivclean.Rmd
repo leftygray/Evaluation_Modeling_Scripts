@@ -33,7 +33,7 @@ cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "HIV", "data")
 
 # Primary script parameters
-dataYear <- 2020
+dataYear <- 2021
 
 ```
 
