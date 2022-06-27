@@ -39,7 +39,7 @@ source("TidyLongitudinal.R")
 states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2020 # Annual data from 2014
+dataYear <- 2021 # Annual data from 2014
 
 ```
 
@@ -113,10 +113,15 @@ nationalERP <- filter(erpData, state == "all") %>%
 # Process overall departure data -----------------------------------------
 
 # Read in second sheet skipping most of the bumph
-departData <- read_excel(file.path(absFolder,
-  paste0("340102-ABS_Overseas_Departures-", toString(dataYear), ".xls")),
+if (dataYear < 2021) {
+  departData <- read_excel(file.path(absFolder,
+    paste0("340102-ABS_Overseas_Departures-", toString(dataYear), ".xls")),
                       sheet = 2, skip = 9)
-
+} else {
+  departData <- read_excel(file.path(absFolder,
+    paste0("340102-ABS_Overseas_Departures-", toString(dataYear), ".xlsx")),
+                      sheet = 2, skip = 9)
+} 
 # Delete unnecessary columns (keeping the first 4; quarter, permanent,
 # long-term resident, long-term visitor) 
 departData <- departData[, c(1:4)]
@@ -253,9 +258,15 @@ write.csv(nomData, file = file.path(cascadeDataFolder,
 ```{r interstate}
 
 # Process arrivals read in second sheet ----------------------------------
-arrData <- read_excel(file.path(absFolder,
-  paste0("3101016a-ABS_Interstate_Arrivals-", 
-         toString(dataYear), ".xls")), sheet = 2, skip = 9)
+if (dataYear < 2021) {
+  arrData <- read_excel(file.path(absFolder,
+    paste0("3101016a-ABS_Interstate_Arrivals-", 
+      toString(dataYear), ".xls")), sheet = 2, skip = 9)
+} else {
+  arrData <- read_excel(file.path(absFolder,
+    paste0("3101016a-ABS_Interstate_Arrivals-", 
+      toString(dataYear), ".xlsx")), sheet = 2, skip = 9)
+} 
 
 # Convert first column to years 
 arrData[, 1] <- year(arrData$`Series ID`)
@@ -282,9 +293,15 @@ arrData <- arrData %>%
   select(-qtr_arrivals)
  
 # Process departures -----------------------------------------------------
-depData <- read_excel(file.path(absFolder,
-  paste0("3101016b-ABS_Interstate_Departures-", 
-         toString(dataYear), ".xls")), sheet = 2, skip = 9)
+if (dataYear < 2021) {
+  depData <- read_excel(file.path(absFolder,
+    paste0("3101016b-ABS_Interstate_Departures-", 
+      toString(dataYear), ".xls")), sheet = 2, skip = 9)
+} else {
+  depData <- read_excel(file.path(absFolder,
+    paste0("3101016b-ABS_Interstate_Departures-", 
+      toString(dataYear), ".xlsx")), sheet = 2, skip = 9)
+}
 
 # Convert first column to years 
 depData[, 1] <-  year(depData$`Series ID`)
@@ -639,8 +656,13 @@ currently used in the Chlamydia incidence model.
 ```{r group ERP}
 # Process ERP for sex and age from second and third sheets
 
-dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
-                                        toString(dataYear), ".xls"))
+if (dataYear < 2021) {
+  dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
+    toString(dataYear), ".xls"))
+} else {
+  dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
+    toString(dataYear), ".xlsx"))
+}
 
 erpData1 <- read_excel(dataFile, sheet = 2, skip = 9)
 
