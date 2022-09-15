@@ -45,7 +45,7 @@ cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "Chlamydia", "data")
 
 # Primary script parameters - data year 
-dataYear <- 2020
+dataYear <- 2021
 
 ```
 
@@ -218,7 +218,7 @@ if (dataYear == 2014) {
     "NNDSS", "SOURCE")
   
   rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
-    "NNDSS_MASTER.dta") 
+    "Extract", "NNDSS_MASTER.dta") 
   
   # Load the raw NNDSS notifications file and clean it up
   nndssdata <- read_dta(rawDataFile) 
@@ -229,7 +229,8 @@ if (dataYear == 2014) {
   chlamdata <- tibble(nndssdata) %>%
     filter(diseasecode == 7) %>%
     select(age = AGE, sex = SEX, year = YEAR) %>%
-    mutate(sex = tolower(sex))
+    mutate(sex = tolower(sex)) %>%
+    filter(year %in% (dataYear-10+1):dataYear)
   # 
   # ngdata <- tibble(nndssdata) %>%
   #   filter(diseasecode == 11) %>%
@@ -370,7 +371,7 @@ if (dataYear == 2014) {
   
   # Save cleaned chlamdata
   write.csv(finalNotifications, file = file.path(cleanDataFolder,
-    paste0("chlamnotifications_clean-", toString(dataYear), ".csv")), 
+    paste0("chlamnotifications_clean-", dataYear, ".csv")), 
     row.names = FALSE)
   
   write.csv(finalNotifications, file = file.path(cascadeDataFolder,
@@ -940,9 +941,9 @@ if (dataYear %in% 2018:2019) {
 ```
 
 ```{r re-testing ACCESS - 2021 ASR}
-if (dataYear == 2020) {
+if (dataYear >= 2020) {
   # ACCESS re-testing data
-  dataStartYear <- 2011
+  dataStartYear <- 2010
   mergeRemote <-TRUE # add remote and regional data
   
   rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
