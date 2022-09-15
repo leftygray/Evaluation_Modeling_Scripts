@@ -22,6 +22,12 @@ basePath <- file.path(dirname(getwd()))
 
 # Primary script parameters - data year 
 dataYear <- 2021
+numYears <- 10
+
+years <- (dataYear - numYears + 1):dataYear 
+
+cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
+  "Australian Care Cascades - Documents", "OtherSTIs")
 
 ```
 
@@ -92,74 +98,89 @@ hcvdata <- tibble(nndssdata) %>%
 
 # Number of NG notifications in males last three years
 ngTotal <- ngdata %>% 
-  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2)) %>% 
+  filter(sex == "male", year %in% years) %>% 
   group_by(year) %>%
   summarise(n = n())
-print(ngTotal)
+# print(ngTotal)
 
 # Number in major cities
 ngMajorCities <- ngdata %>% 
-  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
+  filter(sex == "male", year %in% years, 
     remote == "Major Cities of Australia" ) %>% 
   group_by(year) %>%
   summarise(n = n())
-print(ngMajorCities)
+# print(ngMajorCities)
 
 # Number where region is missing
 ngMissing <- ngdata %>% 
-  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
+  filter(sex == "male", year %in% years, 
     remote == "Missing" ) %>% 
   group_by(year) %>%
   summarise(n = n())
-print(ngMissing)
+# print(ngMissing)
 
 # Number in other areas
-ngOther <- tibble(year = c(dataYear, dataYear - 1, dataYear - 2),
+ngOther <- tibble(year = years,
   n = ngTotal$n - ngMajorCities$n - ngMissing$n) %>%
   arrange(year)
-print(ngOther)
+# print(ngOther)
 
-```
+# Merge notifications
+ngMSMdiags <- tibble(year = years,
+  male = ngTotal$n,
+  cities = ngMajorCities$n,
+  regions = ngOther$n,
+  missing = ngMissing$n)
 
-```{r GBM numbers for enhanced data}
+# GBM numbers from enhanced data -----------------------------------------------
 
 # Proportion of male diagnoses in GBM - major cities
-ngMajorCities <- ngdata %>% 
-  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
+ngMajorCities_known <- ngdata %>% 
+  filter(sex == "male", year %in% years, 
     remote == "Major Cities of Australia", remote != "Missing") %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
   group_by(year) %>%
   summarise(n = n())
 
-ngGBMMajorCities <- ngdata %>% 
-  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
+ngGBMMajorCities_known <- ngdata %>% 
+  filter(sex == "male", year %in% years, 
     remote == "Major Cities of Australia", remote != "Missing") %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
   group_by(year) %>%
   summarise(n = n())
 
-print(ngGBMMajorCities$n/ngMajorCities$n)
+propGBMcities <- ngGBMMajorCities_known$n/ngMajorCities_known$n
 
 # Proportion of male diagnoses in GBM - non-Major cities
-ngRegions <- ngdata %>% 
-  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2),  
+ngRegions_known <- ngdata %>% 
+  filter(sex == "male", year %in% years,  
     remote != "Major Cities of Australia", remote != "Missing") %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
   group_by(year) %>%
   summarise(n = n())
 
-ngGBMRegions <- ngdata %>% 
-  filter(sex == "male", year %in% c(dataYear, dataYear - 1, dataYear - 2), 
+ngGBMRegions_known <- ngdata %>% 
+  filter(sex == "male", year %in% years, 
     remote != "Major Cities of Australia", remote != "Missing" ) %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
   group_by(year) %>%
   summarise(n = n())
 
-print(ngGBMRegions$n/ngRegions$n)
+propGBMregions <- ngGBMRegions_known$n/ngRegions_known$n
+
+# Add proportions to GBM diagnoses
+ngMSMdiags <- ngMSMdiags %>%
+  mutate(prop_cities = propGBMcities,
+    prop_regions = propGBMregions)
+
+# Write final data frame to cascades folder ------------------------------------
+write.csv(ngMSMdiags, file = file.path(cascadeDataFolder, "Gonorrhoea",
+  paste0("gbmNGnotifications-", dataYear, ".csv")), 
+  row.names = FALSE)
 
 ```
 
