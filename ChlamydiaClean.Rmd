@@ -1078,8 +1078,11 @@ if (dataYear >= 2020) {
   
   chlamRetest <- chlamRetest %>%
     filter(year %in% c((dataYear-numyears+1):dataYear)) %>%
+    arrange(match(region, c("urban", "regional", "remote"))) %>%
+    arrange(match(context, c("shc", "gp"))) %>%
+    arrange(match(sex, c("male", "female", "all"))) %>%
     arrange(year)
-  
+    
   # Write to file 
   write.csv(chlamRetest, file = file.path(cleanDataFolder,
     paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
