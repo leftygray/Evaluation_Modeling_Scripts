@@ -533,7 +533,7 @@ if (dataYear < 2017) {
   colnames(chlamRetest)[1] <- "setting"
   colnames(chlamRetest)[2] <- "variable"
   
-  # Manually relable columns by all, male and female data
+  # Manually relabel columns by all, male and female data
   dataYears <- dataStartYear:(dataStartYear + 
       (dataYear - dataStartYear))
   numDataYears <- length(dataYears)
@@ -945,6 +945,7 @@ if (dataYear >= 2020) {
   # ACCESS re-testing data
   dataStartYear <- 2010
   mergeRemote <-TRUE # add remote and regional data
+  numyears <- 5 # Number of years for cascade
   
   rawDataTreatment <- file.path(dataPath, paste0("access_cascade_data-", 
     toString(dataYear), ".xlsx"))
@@ -976,6 +977,7 @@ if (dataYear >= 2020) {
   # Get rid of excess rows and columns
   chlamRetest <- chlamRetest %>% 
     select(-contains("X_")) %>%
+    select(-contains("...")) %>%
     filter(!is.na(variable))
   
   # Just keep the data and calculate proportions separately
@@ -1024,7 +1026,8 @@ if (dataYear >= 2020) {
   
   chlamRetest <- chlamRetest %>%
     select(-yearsex) %>%
-    spread(variable, number)
+    spread(variable, number) %>%
+    drop_na()
   
   if (mergeRemote) {
     # Add another set of rows for regional+remote data
@@ -1074,14 +1077,14 @@ if (dataYear >= 2020) {
   # Extract data year and write to file ------------------------------------
   
   chlamRetest <- chlamRetest %>%
-    filter(year %in% c((dataYear-2):dataYear)) %>%
+    filter(year %in% c((dataYear-numyears+1):dataYear)) %>%
     arrange(year)
   
   # Write to file 
   write.csv(chlamRetest, file = file.path(cleanDataFolder,
     paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
     row.names = FALSE)
-  
+
   write.csv(chlamRetest, file = file.path(cascadeDataFolder,
     paste0("retestsAccess_clean-", toString(dataYear), ".csv")),
     row.names = FALSE)
