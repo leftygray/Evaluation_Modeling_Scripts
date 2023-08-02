@@ -72,7 +72,7 @@ specify the input and output files.
 ```{r User specifications, tidy = TRUE}
 
 # User specified year
-yearAnalysis <- 2021
+yearAnalysis <- 2022
 
 ```
 

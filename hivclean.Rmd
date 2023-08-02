@@ -33,13 +33,13 @@ cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "HIV", "data")
 
 # Primary script parameters
-dataYear <- 2021
+dataYear <- 2022
 
 ```
 
 ## HIV Notifications
 
-For the purposes of the HIV cascade calculations and Annual Surviellance
+For the purposes of the HIV cascade calculations and Annual Surveillance
 Report we group notifications into broad exposure categories. The following
 modes of exposure are used:
 * msm - includes msm, msm-idu, bisexual males, bisexual male IDU
@@ -48,10 +48,10 @@ modes of exposure are used:
 * other - everything else
 
 We also use broad population categories:
-* non-indigenous - Austrlian born
+* non-indigenous - Australian born
 * indigenous - Australian born
 * seasia - South East Asia
-* ssafrica - Sub-sharan Africa
+* ssafrica - Sub-suharan Africa
 
 
 ```{r notifications}
@@ -107,6 +107,8 @@ if (dataYear < 2017) {
   hivdata[hivdata$sex == "Female",]$sex <- "female" 
   hivdata[hivdata$sex == "Transgender",]$sex <- "transgender" 
   hivdata[hivdata$sex == "Unknown",]$sex <- "unknown" 
+  
+  hivdata$sex <- tolower(hivdata$sex)
   
   hivdata$state <- tolower(hivdata$state)
   hivdata[hivdata$state == "not reported",]$state <- NA
