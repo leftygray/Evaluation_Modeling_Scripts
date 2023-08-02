@@ -125,7 +125,7 @@ vars <- c("state", "sex", "dob", "cob", "rob", "datehiv",
   "age_hiv", "dateaids", "cd4count", "expcode", "partnercob", "dateneg",
   "dateindet", "dateill", "datedeath",
   "causeofdeath", "previ_diag_overseas",
-  "country_prev_diag", "cd4_date", "yearhiv", "cli_status_on_spec_dt")
+  "country_prev_diag", "cd4_date", "yearhiv", "newly_acq")
 
 if (yearAnalysis < 2015) {
   vars <- c(vars,"aborig")
