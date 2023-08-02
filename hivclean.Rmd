@@ -73,11 +73,16 @@ if (dataYear <= 2013) {
     "numeric", "character", "numeric", "Date", "Date",
     "Date", "Date", "numeric",
     "numeric", "numeric", "Date", "numeric", "character"))
-} else {
+} else if ((dataYear %in% 2017:2021)) {
   hivdata <- read.csv(rawdata, colClasses = c("character", "character", 
     "Date",  "numeric", "character", "Date", "numeric", "Date", "numeric", 
     "character", "numeric", "Date", "Date", "Date", "Date", "numeric",
     "numeric", "numeric", "Date", "numeric", "numeric", "numeric"))
+} else {
+   hivdata <- read.csv(rawdata, colClasses = c("character", "character", 
+    "Date",  "numeric", "character", "Date", "numeric", "Date", "numeric", 
+    "character", "numeric", "Date", "Date", "Date", "Date", "numeric",
+    "numeric", "numeric", "Date", "numeric", "numeric", "numeric", "numeric"))
 }
 
 # Rename and order variables for ease of use
@@ -197,8 +202,6 @@ hivdata[hivdata$exposure == "5A4", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5B", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "", ]$exposure <- "unknown"
 
-# hivdata[hivdata$exposure == "",]$exposure <- "unknown"
-
 # Add a broad exposure category indicator. 
 msmgroup <- c("msm","bisex-male","bisex-male-idu","msm-idu")
 pwidgroup <- c("idu","hetero-idu")
@@ -275,6 +278,24 @@ if (dataYear < 2015) {
       hivdata$indigenous != 1),
     ]$aboriggroup <- "non-indigenous"
 }
+
+# Add a sero-conversion indicator
+# cli_status_on_spec_dt == 2 or dateneg < 365 before diagnosis. 
+# Important for distinguishing late diagnosis by CD4 count. 
+hivdata$seroconversion <- "no"
+
+hivdata <- hivdata |>
+  mutate(cli_status_on_spec_dt = ifelse(is.na(cli_status_on_spec_dt), 0,
+    cli_status_on_spec_dt)) |>
+  mutate(seroconversion = ifelse(cli_status_on_spec_dt == 2, "yes",
+    seroconversion)) |>
+  mutate(days_since_neg = datediagnosis - dateneg) |>
+  # Convert NAs to a large number
+  mutate(days_since_neg = ifelse(is.na(days_since_neg), 10000,
+    days_since_neg)) |>
+  mutate(seroconversion = ifelse(seroconversion != 2 & days_since_neg < 365,
+    "yes", seroconversion)) |>
+  select(-days_since_neg)
 
 # Save cleaned hivdata
 write.csv(hivdata, file = file.path(privateDataPath, 
