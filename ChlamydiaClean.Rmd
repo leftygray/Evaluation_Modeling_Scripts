@@ -45,7 +45,7 @@ cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "Chlamydia", "data")
 
 # Primary script parameters - data year 
-dataYear <- 2021
+dataYear <- 2022
 
 ```
 
@@ -1073,6 +1073,9 @@ if (dataYear >= 2020) {
   
   chlamRetest[indices, ]$prop_lower <- propLower
   chlamRetest[indices, ]$prop_upper <- propUpper
+  
+  # Replace NAs with zeros
+  chlamRetest[is.na(chlamRetest)] <- 0
   
   # Extract data year and write to file ------------------------------------
   

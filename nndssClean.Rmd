@@ -21,7 +21,7 @@ LoadLibrary(haven)
 basePath <- file.path(dirname(getwd()))
 
 # Primary script parameters - data year 
-dataYear <- 2021
+dataYear <- 2022
 numYears <- 10
 
 years <- (dataYear - numYears + 1):dataYear 
