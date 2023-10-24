@@ -74,15 +74,17 @@ if (dataYear <= 2013) {
     "Date", "Date", "numeric",
     "numeric", "numeric", "Date", "numeric", "character"))
 } else if ((dataYear %in% 2017:2021)) {
-  hivdata <- read.csv(rawdata, colClasses = c("character", "character", 
-    "Date",  "numeric", "character", "Date", "numeric", "Date", "numeric", 
+  hivdata <- read.csv(rawdata, colClasses = c("character", "character",
+    "Date",  "numeric", "character", "Date", "numeric", "Date", "numeric",
     "character", "numeric", "Date", "Date", "Date", "Date", "numeric",
-    "numeric", "numeric", "Date", "numeric", "numeric", "numeric"))
+    "numeric", "numeric", "Date", "numeric", "numeric", "numeric",
+    "numeric", "numeric", "numeric"))
 } else {
-   hivdata <- read.csv(rawdata, colClasses = c("character", "character", 
-    "Date",  "numeric", "character", "Date", "numeric", "Date", "numeric", 
+   hivdata <- read.csv(rawdata, colClasses = c("character", "character",
+    "Date",  "numeric", "character", "Date", "numeric", "Date", "numeric",
     "character", "numeric", "Date", "Date", "Date", "Date", "numeric",
-    "numeric", "numeric", "Date", "numeric", "numeric", "numeric", "numeric"))
+    "numeric", "numeric", "Date", "numeric", "numeric", "numeric",
+    "numeric", "numeric", "numeric"))
 }
 
 # Rename and order variables for ease of use
@@ -117,11 +119,17 @@ if (dataYear < 2017) {
   
   hivdata$state <- tolower(hivdata$state)
   hivdata[hivdata$state == "not reported",]$state <- NA
-} else {
+} else if (dataYear %in% c(2019:2021)){
   
   hivdata$sex <- tolower(hivdata$sex)
   hivdata$state <- tolower(hivdata$state)
   # hivdata[hivdata$state == "not reported",]$state <- NA
+} else {
+  # For year 2022
+  hivdata[hivdata$sex == 1,]$sex <- "male" 
+  hivdata[hivdata$sex == 2,]$sex <- "female" 
+  hivdata[hivdata$sex == 3,]$sex <- "transgender" 
+  hivdata[hivdata$sex == 0,]$sex <- "unknown"
 }
 
 # Add a classification for linkage to care based on CD4 count variable.
@@ -278,6 +286,14 @@ if (dataYear < 2015) {
       hivdata$indigenous != 1),
     ]$aboriggroup <- "non-indigenous"
 }
+
+# Set-up a seroconversion indicator
+hivdata <- hivdata |> 
+  mutate(seroconverter = 0) |>
+  mutate(cli_status_on_spec_dt  =  ifelse(is.na(cli_status_on_spec_dt), 0,
+    cli_status_on_spec_dt)) |>
+  mutate(seroconverter = ifelse(cli_status_on_spec_dt == 2, 1, seroconverter)) |>
+  select(-cli_status_on_spec_dt)
 
 # Save cleaned hivdata
 write.csv(hivdata, file = file.path(privateDataPath, 
