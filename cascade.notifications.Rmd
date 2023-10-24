@@ -112,20 +112,14 @@ if (yearAnalysis < 2015) {
 } else {
   rawData <- read.dta13(rawDataFile) 
   colnames(rawData) <- tolower(colnames(rawData))
-  
-  # Sort out indigenous variable
-  # rawData$indigenous <- as.numeric(rawData$indigenous)
-  # rawData[rawData$indigenous == 1, ]$indigenous <- 0
-  # rawData[rawData$indigenous == 2, ]$indigenous <- 1
-  # rawData[rawData$indigenous == 3, ]$indigenous <- 9
 }
 
 # Select the variables required and create processed data
 vars <- c("state", "sex", "dob", "cob", "rob", "datehiv",
   "age_hiv", "dateaids", "cd4count", "expcode", "partnercob", "dateneg",
-  "dateindet", "dateill", "datedeath",
-  "causeofdeath", "previ_diag_overseas",
-  "country_prev_diag", "cd4_date", "yearhiv", "newly_acq")
+  "dateindet", "dateill", "datedeath", "causeofdeath", "previ_diag_overseas",
+  "country_prev_diag", "cd4_date", "yearhiv", "newly_acq", 
+  "cli_status_on_spec_dt")
 
 if (yearAnalysis < 2015) {
   vars <- c(vars,"aborig")
