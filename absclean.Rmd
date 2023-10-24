@@ -39,7 +39,7 @@ source("TidyLongitudinal.R")
 states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2021 # Annual data from 2014
+dataYear <- 2022 # Annual data from 2014
 
 ```
 
@@ -206,6 +206,8 @@ if (dataYear %in% 2014:2016) {
 
 years <- 2004:nomYear
 
+nomDataYear <- min(dataYear, 2021)
+
 # Initilize results data frame
 nomData <- data.frame(year = as.numeric(),
                       state = as.numeric(),
@@ -217,7 +219,7 @@ nomData <- data.frame(year = as.numeric(),
 for (ii in seq(along = years) + 1) {
   
   # Read in sheet from file
-  tempData <- read_excel(file.path(absFolder,                                  paste0("34120do007-ABS_Migration_NOM-", toString(dataYear) ,".xls")),
+  tempData <- read_excel(file.path(absFolder,                                  paste0("34120do007-ABS_Migration_NOM-", toString(nomDataYear) ,".xls")),
                          sheet = ii, skip = 5)
   
   # Replace annoying column names
@@ -338,6 +340,171 @@ write.csv(interstateData, file = file.path(cascadeDataFolder,
   row.names = FALSE)
 
 ```
+
+## Estimated resident population for each age and sex
+
+This R chuck cleans the ERP data by sex and age provided by the ABS. It is
+currently used in the Chlamydia incidence model. 
+
+```{r group ERP}
+# Process ERP for sex and age from second and third sheets
+
+if (dataYear < 2021) {
+  dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
+    toString(dataYear), ".xls"))
+} else {
+  dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
+    toString(dataYear), ".xlsx"))
+}
+
+erpData1 <- read_excel(dataFile, sheet = 2, skip = 9)
+
+erpData2 <- read_excel(dataFile, sheet = 3, skip = 9)
+
+# Combine data frames
+erpasData <- cbind(erpData1, erpData2[, 2:ncol(erpData2)])
+
+# Setup column names - 101 ages for males, females and all
+ages <- as.character(0:100)
+colnames(erpasData) <- c("year", paste("males-", ages, sep = ""),
+                         paste("females-", ages, sep = ""),
+                         paste("all-", ages, sep = ""))
+ 
+# Convert first column to years 
+erpasData[, 1] <- format(erpasData[, 1],"%Y")
+erpasData$year <- as.numeric(erpasData$year)
+
+# Save the final cleaned data set 
+write.csv(erpasData, file = file.path(cleanDataFolder,
+  paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+write.csv(erpasData, file = file.path(cascadeDataFolder,
+  paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+```
+
+# Deprecated
+#===========
+
+The following chuck is no longer needed as we no longer use PharmDash data but 
+it easily be run every year. 
+
+```{r PharmDash ERP}
+# Generate ERP for sub-populations in the ART data from the 10% 
+# Prospection sample 
+# Use variables: erpData and erpasData
+
+prospectionYears <- 2013:dataYear
+
+# Overall and state ERP
+stateERP <- erpData %>% 
+  filter(year %in% prospectionYears) %>%
+  arrange(year, desc(erp)) %>%
+  rename(population = state) 
+
+# Sex and age ERP
+asERP <- erpasData %>%
+  filter(year %in% prospectionYears) %>%
+  gather(2:ncol(.), key = "group", value = "erp") %>%
+  arrange(year, group) %>%
+  mutate(sex = str_split_fixed(.$group, "-", n = 2)[, 1], 
+    age = str_split_fixed(.$group, "-", n = 2)[, 2]) %>%
+  select(year, sex, age, erp) %>%
+  mutate(age = as.integer(age)) %>%
+  arrange(year, sex, age) %>%
+  as_tibble()
+
+sexERP <- asERP %>%
+  group_by(year, sex) %>%
+  summarise(erp = sum(erp)) %>% 
+  rename(population = sex) %>%
+  filter(population != "all") %>%
+  mutate(population = str_replace(population, "s", "")) %>%
+  ungroup()
+
+ageERP20 <- asERP %>% 
+  filter(sex == "all", age < 20) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "< 20") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP20_29 <- asERP %>% 
+  filter(sex == "all", age %in% 20:29) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "20-29") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP30_39 <- asERP %>% 
+  filter(sex == "all", age %in% 30:39) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "30-39") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP40_49 <- asERP %>% 
+  filter(sex == "all", age %in% 40:49) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "40-49") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP50_59 <- asERP %>% 
+  filter(sex == "all", age %in% 50:59) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "50-59") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP60_69 <- asERP %>% 
+  filter(sex == "all", age %in% 60:69) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "60-69") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP70 <- asERP %>% 
+  filter(sex == "all", age > 70) %>%
+  group_by(year) %>%
+  summarise(erp = sum(erp)) %>%
+  mutate(age = "70+") %>%
+  select(year, age, erp) %>%
+  ungroup()
+
+ageERP <- bind_rows(ageERP20, ageERP20_29, ageERP30_39, ageERP40_49,
+  ageERP50_59, ageERP60_69, ageERP70) %>%
+  arrange(year, age) %>% 
+  rename(population = age)
+
+# Combine all into file data frame
+prospectionERP <- bind_rows(stateERP, sexERP, ageERP) %>%
+  arrange(year) %>%
+  select(population, year, erp)
+
+# Save the final cleaned data set 
+write.csv(prospectionERP, file = file.path(cleanDataFolder,
+  paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
+  row.names = FALSE)
+
+write.csv(prospectionERP, file = file.path(cascadeDataFolder,
+  paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
+  row.names = FALSE)
+
+```
+
+# Once off data processing
+# ========================
+
+The following chunks process once off data files from the ABS. 
 
 ```{r Interstate migration by age and sex}
 # This chuck reads in the saved csv file downloaded from ABS.Stat with the 
@@ -643,161 +810,6 @@ write.csv(regionMigrationData, file = file.path(cleanDataFolder,
 
 write.csv(regionMigrationData, file = file.path(cascadeDataFolder,
   paste0("ABS_interregion_age_sex_clean-", toString(dataYear), ".csv")), 
-  row.names = FALSE)
-
-```
-
-
-## Estimated resident population for each age and sex
-
-This R chuck cleans the ERP data by sex and age provided by the ABS. It is
-currently used in the Chlamydia incidence model. 
-
-```{r group ERP}
-# Process ERP for sex and age from second and third sheets
-
-if (dataYear < 2021) {
-  dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
-    toString(dataYear), ".xls"))
-} else {
-  dataFile <- file.path(absFolder, paste0("3101059-ABS_ERP_Age_Sex-",
-    toString(dataYear), ".xlsx"))
-}
-
-erpData1 <- read_excel(dataFile, sheet = 2, skip = 9)
-
-erpData2 <- read_excel(dataFile, sheet = 3, skip = 9)
-
-# Combine data frames
-erpasData <- cbind(erpData1, erpData2[, 2:ncol(erpData2)])
-
-# Setup column names - 101 ages for males, females and all
-ages <- as.character(0:100)
-colnames(erpasData) <- c("year", paste("males-", ages, sep = ""),
-                         paste("females-", ages, sep = ""),
-                         paste("all-", ages, sep = ""))
- 
-# Convert first column to years 
-erpasData[, 1] <- format(erpasData[, 1],"%Y")
-erpasData$year <- as.numeric(erpasData$year)
-
-# Save the final cleaned data set 
-write.csv(erpasData, file = file.path(cleanDataFolder,
-  paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
-  row.names = FALSE)
-
-write.csv(erpasData, file = file.path(cascadeDataFolder,
-  paste0("ABS_ERP_sex_age_clean-", toString(dataYear), ".csv")), 
-  row.names = FALSE)
-
-```
-
-```{r PharmDash ERP}
-# Generate ERP for sub-populations in the ART data from the 10% 
-# Prospection sample 
-# Use variables: erpData and erpasData
-
-prospectionYears <- 2013:dataYear
-
-# Overall and state ERP
-stateERP <- erpData %>% 
-  filter(year %in% prospectionYears) %>%
-  arrange(year, desc(erp)) %>%
-  rename(population = state) 
-
-# Sex and age ERP
-asERP <- erpasData %>%
-  filter(year %in% prospectionYears) %>%
-  gather(2:ncol(.), key = "group", value = "erp") %>%
-  arrange(year, group) %>%
-  mutate(sex = str_split_fixed(.$group, "-", n = 2)[, 1], 
-    age = str_split_fixed(.$group, "-", n = 2)[, 2]) %>%
-  select(year, sex, age, erp) %>%
-  mutate(age = as.integer(age)) %>%
-  arrange(year, sex, age) %>%
-  as_tibble()
-
-sexERP <- asERP %>%
-  group_by(year, sex) %>%
-  summarise(erp = sum(erp)) %>% 
-  rename(population = sex) %>%
-  filter(population != "all") %>%
-  mutate(population = str_replace(population, "s", "")) %>%
-  ungroup()
-
-ageERP20 <- asERP %>% 
-  filter(sex == "all", age < 20) %>%
-  group_by(year) %>%
-  summarise(erp = sum(erp)) %>%
-  mutate(age = "< 20") %>%
-  select(year, age, erp) %>%
-  ungroup()
-
-ageERP20_29 <- asERP %>% 
-  filter(sex == "all", age %in% 20:29) %>%
-  group_by(year) %>%
-  summarise(erp = sum(erp)) %>%
-  mutate(age = "20-29") %>%
-  select(year, age, erp) %>%
-  ungroup()
-
-ageERP30_39 <- asERP %>% 
-  filter(sex == "all", age %in% 30:39) %>%
-  group_by(year) %>%
-  summarise(erp = sum(erp)) %>%
-  mutate(age = "30-39") %>%
-  select(year, age, erp) %>%
-  ungroup()
-
-ageERP40_49 <- asERP %>% 
-  filter(sex == "all", age %in% 40:49) %>%
-  group_by(year) %>%
-  summarise(erp = sum(erp)) %>%
-  mutate(age = "40-49") %>%
-  select(year, age, erp) %>%
-  ungroup()
-
-ageERP50_59 <- asERP %>% 
-  filter(sex == "all", age %in% 50:59) %>%
-  group_by(year) %>%
-  summarise(erp = sum(erp)) %>%
-  mutate(age = "50-59") %>%
-  select(year, age, erp) %>%
-  ungroup()
-
-ageERP60_69 <- asERP %>% 
-  filter(sex == "all", age %in% 60:69) %>%
-  group_by(year) %>%
-  summarise(erp = sum(erp)) %>%
-  mutate(age = "60-69") %>%
-  select(year, age, erp) %>%
-  ungroup()
-
-ageERP70 <- asERP %>% 
-  filter(sex == "all", age > 70) %>%
-  group_by(year) %>%
-  summarise(erp = sum(erp)) %>%
-  mutate(age = "70+") %>%
-  select(year, age, erp) %>%
-  ungroup()
-
-ageERP <- bind_rows(ageERP20, ageERP20_29, ageERP30_39, ageERP40_49,
-  ageERP50_59, ageERP60_69, ageERP70) %>%
-  arrange(year, age) %>% 
-  rename(population = age)
-
-# Combine all into file data frame
-prospectionERP <- bind_rows(stateERP, sexERP, ageERP) %>%
-  arrange(year) %>%
-  select(population, year, erp)
-
-# Save the final cleaned data set 
-write.csv(prospectionERP, file = file.path(cleanDataFolder,
-  paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
-  row.names = FALSE)
-
-write.csv(prospectionERP, file = file.path(cascadeDataFolder,
-  paste0("ABS_population_sizes_PharmDash-", dataYear, ".csv")), 
   row.names = FALSE)
 
 ```
