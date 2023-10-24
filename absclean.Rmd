@@ -84,22 +84,27 @@ write.csv(erpData, file = file.path(cascadeDataFolder,
   row.names = FALSE)
 ```
 
-## Proportion of people who depart Australia - permantly or for more than
-a year 
+## Proportion of people who depart Australia - permantly or for more than a year 
 
-**Data:** ABS series 340102
-**File:** 340102-ABS_Overseas_Departures-(dataYear).xls
+**Data:** ABS series 340102 (former)
+**File:** 340102-ABS_Overseas_Departures-(dataYear).xls (table 2 from from URL data downloads)
+**URL:** https://www.abs.gov.au/statistics/industry/tourism-and-transport/overseas-arrivals-and-departures-australia/latest-release#data-downloads
 **Definitions:**
 - Permanent departures: Australian residents (including former settlers)
 who on departure state on their passenger card that they are departing 
-permanently.
+permanently. Since 2016 this has not been available due to the removal of the 
+passenger card. 
 - Long-term resident departures (LTRD): Australian residents who state
 that they intend to stay abroad for 12 months or more (but not
 permanently).
 - Long-term visitor departures (LTVD): Overseas visitors departing after a
 recorded stay of 12 months or more in Australia. 
+- Permanent and Long-term departures: Sum of the three previous variables. Since
+2016 this is just LTRD + LTVD. 
 
-Note: dataYear in the file refers to the last complete year in the data
+Note: dataYear in the file refers to the last complete year in the data. These
+statistics report on the number of international border crossings rather than
+the number of people. So technically isn't the same as overseas migration. 
 
 ```{r Departures}
 # This script cleans the ABS data into the format we want. The raw data is
@@ -107,54 +112,75 @@ Note: dataYear in the file refers to the last complete year in the data
 
 # National ERP data ------------------------------------------------------
 
-nationalERP <- filter(erpData, state == "all") %>%
+nationalERP <- filter(erpData, state == "all") |>
   select(-state)
 
 # Process overall departure data -----------------------------------------
 
 # Read in second sheet skipping most of the bumph
-if (dataYear < 2021) {
-  departData <- read_excel(file.path(absFolder,
-    paste0("340102-ABS_Overseas_Departures-", toString(dataYear), ".xls")),
-                      sheet = 2, skip = 9)
-} else {
-  departData <- read_excel(file.path(absFolder,
-    paste0("340102-ABS_Overseas_Departures-", toString(dataYear), ".xlsx")),
-                      sheet = 2, skip = 9)
-} 
+departData <- read_excel(
+  file.path(
+    absFolder,
+    paste0(
+      "340102-ABS_Overseas_Departures-", 
+      dataYear, 
+      ifelse(dataYear >= 2021, ".xlsx", ".xls")
+    )
+  ),
+  sheet = 2, 
+  skip = 9
+)
+
 # Delete unnecessary columns (keeping the first 4; quarter, permanent,
-# long-term resident, long-term visitor) 
-departData <- departData[, c(1:4)]
+# long-term resident, long-term visitor, total) 
+departData <- departData[, c(1:5)]
 
 # Convert first column to years 
 departData[, 1] <- year(departData$`Series ID`)
 
 # Rename columns
-colnames(departData) <- c("year", "permanent", "resident", "visitor")
+colnames(departData) <- c("year", "permanent", "resident", "visitor", "total")
 
 # Group by year and sum to get total for each year
-departData <- departData %>%
-  group_by(year) %>%
-  summarise(permanent = sum(permanent),
-            resident = sum(resident),
-            visitor = sum(visitor)) %>%
-  mutate(year = as.numeric(year)) %>%  # Convert to correct data type
+departData <- departData |>
+  group_by(year) |>
+  summarise(
+    permanent = sum(permanent),
+    resident = sum(resident),
+    visitor = sum(visitor),
+    total = sum(total)
+  ) |>
+  mutate(year = as.numeric(year)) |>  # Convert to correct data type
   ungroup() %>%
-  inner_join(nationalERP, ., by = "year") %>% # Add overall ERP
-  mutate(overall = permanent + resident + visitor,
-         rate_permanent = permanent / erp, # Calculate departure rates
-         rate_resident = resident / erp,
-         rate_vistor = visitor / erp,
-         overall_rate = (permanent + resident + visitor) / erp) 
+  inner_join(nationalERP, ., by = "year") |> # Add overall ERP
+  mutate(
+    overall = permanent + resident + visitor,
+    rate_permanent = permanent / erp, # Calculate departure rates
+    rate_resident = resident / erp,
+    rate_vistor = visitor / erp,
+    rate_total = (resident + visitor) / erp,
+    overall_rate = (permanent + resident + visitor) / erp
+  ) 
 
 # Save the final cleaned data set 
-write.csv(departData, file = file.path(cleanDataFolder,
-  paste0("ABS_departures_clean-", toString(dataYear), ".csv")), 
-  row.names = FALSE)
+write.csv(
+  departData, 
+  file = file.path(
+    cleanDataFolder,
+    paste0("ABS_departures_clean-", dataYear, ".csv")
+  ), 
+  row.names = FALSE
+)
 
-write.csv(departData, file = file.path(cascadeDataFolder,
-  paste0("ABS_departures_clean-", toString(dataYear), ".csv")), 
-  row.names = FALSE)
+write.csv(
+  departData, 
+  file = file.path(
+    cascadeDataFolder,
+    paste0("ABS_departures_clean-", dataYear, ".csv")
+  ), 
+  row.names = FALSE
+)
+
 ```
 
 ## Proportion of people who leave Australia by state and territory
