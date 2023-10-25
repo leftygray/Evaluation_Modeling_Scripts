@@ -370,8 +370,6 @@ write.csv(nomData, file = file.path(cascadeDataFolder,
 
 ```
 
-
-
 ## Proportion of people who move interstate
 
 ```{r interstate}
