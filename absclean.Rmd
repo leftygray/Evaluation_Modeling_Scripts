@@ -1,6 +1,6 @@
 ABS data cleaning 
 =================
-  
+
 This script is used to load and clean raw demographic data from the 
 Australian Bureau of Statistics (ABS). These data are primarily used for 
 care cascade calculations but can be useful for Australian evaluation
@@ -72,7 +72,7 @@ erpData <- erpData %>%
   gather(state, erp, 2:10) %>%
   arrange(year) %>%
   mutate(year = as.numeric(year),
-         state = as.character(state))
+    state = as.character(state))
 
 # Save the final cleaned data set 
 write.csv(erpData, file = file.path(cleanDataFolder, 
@@ -99,12 +99,16 @@ that they intend to stay abroad for 12 months or more (but not
 permanently).
 - Long-term visitor departures (LTVD): Overseas visitors departing after a
 recorded stay of 12 months or more in Australia. 
-- Permanent and Long-term departures: Sum of the three previous variables. Since
-2016 this is just LTRD + LTVD. 
 
-Note: dataYear in the file refers to the last complete year in the data. These
-statistics report on the number of international border crossings rather than
-the number of people. So technically isn't the same as overseas migration. 
+Notes: 
+1. dataYear in the file refers to the last complete year in the data. 
+2. These statistics report on the number of international border crossings
+rather than the number of people. So technically isn't the same as overseas
+migration.
+3. **Warning** The data reported by the ABS since from 2017 is very different to
+the last permanent removals data available in 2016. Files with dataYear > 2016
+have 0 for permmanent departures after 2007 and the data for LTRD and LTVD seems
+very different to the 2016 file. 
 
 ```{r Departures}
 # This script cleans the ABS data into the format we want. The raw data is
@@ -217,57 +221,75 @@ month period does not have to be continuous and is measured over a
 the population is determined by their exact duration of stay in or away 
 from Australia over the subsequent 16 months after arrival or departure.
 
-Note: dataYear in the file refers to the ABS year end but the data is 
+Note: 
+1. dataYear in the file refers to the ABS year end but the data is 
 two years behind. First year is always 2004. 
+2. Format of obtaining NOM data changed after 2020. Before 2021, data required
+was available as a downloaded excel file data for after 2020 is now obtained 
+using the Data Explorer. 
+3. First part of chunk below is for the old data spreadsheets with second part for the 
+new data downloads. After 2020 we extract Australia citizen and total NOM 
+departures.
 
-```{r NOM}
+```{r NOM (2020)}
 # Process NOM departure data - Have to read in separate sheets
 
 # Need to specify years first
 if (dataYear %in% 2014:2016) {
   nomYear <- 2014
-} else if (dataYear >= 2017) {
+} else if (dataYear %in% 2017:2020) {
   nomYear <- 2017
-}
+} else if (dataYear == 2021) {
+  nomYear <- 2020 # Last year data available in this format
+} else {
+  stop("Data now in new format")
+} 
 
 years <- 2004:nomYear
 
-nomDataYear <- min(dataYear, 2021)
-
-# Initilize results data frame
-nomData <- data.frame(year = as.numeric(),
-                      state = as.numeric(),
-                      arrivales = as.numeric(),
-                      departures = as.numeric(),
-                      nom = as.numeric())
+# Initialize results data frame
+nomData <- data.frame(
+  year = as.numeric(),
+  state = as.numeric(),
+  arrivales = as.numeric(),
+  departures = as.numeric(),
+  nom = as.numeric()
+)
 
 # Loop through sheets extracting data we want
 for (ii in seq(along = years) + 1) {
   
   # Read in sheet from file
-  tempData <- read_excel(file.path(absFolder,                                  paste0("34120do007-ABS_Migration_NOM-", toString(nomDataYear) ,".xls")),
-                         sheet = ii, skip = 5)
+  tempData <- read_excel(
+    file.path(
+      absFolder,                                
+      paste0("34120do007-ABS_Migration_NOM-", nomYear ,".xls")
+    ),
+    sheet = ii, 
+    skip = 5
+  )
   
   # Replace annoying column names
   colnames(tempData) <- c("state", "grouping", "category", "arrivals",
-                          "departures", "nom")
+    "departures", "nom")
   
   # Select the data we want and do some general tidying up
-  tempData <- tempData %>%
-    select(-category) %>%
-    filter(grouping == "Total") %>%
+  tempData <- tempData |>
+    select(-category) |>
+    filter(grouping == "Total") |>
     mutate(state = states,
-           year = rep(years[ii-1], length(states))) %>%
-    select(-grouping, year, everything())
+      year = rep(years[ii-1], length(states))) |>
+    select(-grouping) |>
+    slect(year, everything())
   
   # Append to final results
   nomData <- rbind(nomData, tempData)
 }
 
 # Order nomdata by state and add erpData and an overall departure rate
-nomData <- arrange(nomData, year) %>%
-  select(year, everything()) %>%
-  inner_join(erpData, ., by = c("year", "state")) %>%
+nomData <- arrange(nomData, year) |>
+  select(year, everything()) |>
+  inner_join(erpData, ., by = c("year", "state")) |>
   mutate(depart_rate = departures / erp)
 
 # Save the final cleaned data set 
@@ -280,6 +302,75 @@ write.csv(nomData, file = file.path(cascadeDataFolder,
   row.names = FALSE)
 
 ```
+
+```{r NOM post 2020}
+# File: ABS_Data_Explorer_NOM_Data_2004-(dataYear-1).csv
+# Migration data is not released by the ABS until December each year now so can 
+# only process to the end of the previous year.
+
+nomYear <- dataYear - 1
+
+# Read Data Explorer file 
+nomData <- read_csv(
+  file.path(
+    absFolder,                                
+    paste0("ABS_Data_Explorer_NOM_Data_2004-", nomYear ,".csv")
+  )
+)
+
+# Select and clean data required
+nomData <- nomData |> 
+  select(
+    state = `REGION: Region`, 
+    type = `MIGRATIONTYPE: Migration Type`, 
+    value = OBS_VALUE,
+    year = `TIME_PERIOD: Time Period`, 
+    grouping = `MEASURE: Type of Visa`
+  ) |>
+  # Clean up data 
+  mutate(
+    state = tolower(str_split_fixed(state, ": ", n = 2)[, 2]),
+    type = tolower(str_split_fixed(type, ": NOM ", n = 2)[, 2]), 
+    grouping = tolower(str_split_fixed(grouping, ": ", n = 2)[, 2])
+  ) |>
+  filter(grouping %in% c("total", "australian citizen")) |>
+  mutate(state = if_else(state == "new south wales", "nsw", state)) |>
+  mutate(state = if_else(state == "victoria", "vic", state)) |>
+  mutate(state = if_else(state == "queensland", "qld", state)) |>
+  mutate(state = if_else(state == "south australia", "sa", state)) |>
+  mutate(state = if_else(state == "western australia", "wa", state)) |>
+  mutate(state = if_else(state == "tasmania", "tas", state)) |>
+  mutate(state = if_else(state == "northern territory", "nt", state)) |>
+  mutate(state = if_else(state == "australian capital territory", "act", state)) |>
+  mutate(state = if_else(state == "australia", "all", state)) |>
+  mutate(grouping = if_else(grouping == "australian citizen", "australian", grouping)) |>
+  arrange(
+    year, 
+    type, 
+    grouping,
+    match(state, c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all"))
+  ) |>
+  pivot_wider(names_from = type, values_from = value) |>
+  mutate(nom = arrivals - departures) |>
+  select(year, state, arrivals, departures, nom, grouping)
+
+# Append ERP and calculate departure rate
+nomData <- nomData |>
+  inner_join(erpData, ., by = c("year", "state")) |>
+  mutate(depart_rate = departures / erp)
+
+# Save the final cleaned data set 
+write.csv(nomData, file = file.path(cleanDataFolder,
+  paste0("ABS_migration_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+write.csv(nomData, file = file.path(cascadeDataFolder,
+  paste0("ABS_migration_clean-", toString(dataYear), ".csv")), 
+  row.names = FALSE)
+
+```
+
+
 
 ## Proportion of people who move interstate
 
@@ -319,7 +410,7 @@ arrData <- arrData %>%
   ungroup() %>%
   slice(seq(4, numYears*8*4+4, by =4)) %>% # Exclude all; take every 4th row
   select(-qtr_arrivals)
- 
+
 # Process departures -----------------------------------------------------
 if (dataYear < 2021) {
   depData <- read_excel(file.path(absFolder,
@@ -393,9 +484,9 @@ erpasData <- cbind(erpData1, erpData2[, 2:ncol(erpData2)])
 # Setup column names - 101 ages for males, females and all
 ages <- as.character(0:100)
 colnames(erpasData) <- c("year", paste("males-", ages, sep = ""),
-                         paste("females-", ages, sep = ""),
-                         paste("all-", ages, sep = ""))
- 
+  paste("females-", ages, sep = ""),
+  paste("all-", ages, sep = ""))
+
 # Convert first column to years 
 erpasData[, 1] <- format(erpasData[, 1],"%Y")
 erpasData$year <- as.numeric(erpasData$year)
@@ -528,7 +619,6 @@ write.csv(prospectionERP, file = file.path(cascadeDataFolder,
 ```
 
 # Once off data processing
-# ========================
 
 The following chunks process once off data files from the ABS. 
 
@@ -623,69 +713,69 @@ write.csv(interMigrationData, file = file.path(cascadeDataFolder,
 regionMigrationDataPersons <- read_csv(file.path(absFolder,
   paste0("3218-ABSSTAT_regional_movement_age_sex-2007-2015-persons.csv")),
   col_types = cols(
-  RIM = col_integer(),
-  `Migration Type` = col_character(),
-  AGE = col_character(),
-  `Age Group` = col_character(),
-  SEX = col_integer(),
-  Sex = col_character(),
-  REGIONTYPE = col_character(),
-  `Region Type` = col_character(),
-  ASGS_2011_SA34_GCCSA_STE = col_character(),
-  Region = col_character(),
-  FREQUENCY = col_character(),
-  Frequency = col_character(),
-  TIME_FY = col_integer(),
-  Time = col_character(),
-  Value = col_integer(),
-  `Flag Codes` = col_character(),
-  Flags = col_character())) %>%
+    RIM = col_integer(),
+    `Migration Type` = col_character(),
+    AGE = col_character(),
+    `Age Group` = col_character(),
+    SEX = col_integer(),
+    Sex = col_character(),
+    REGIONTYPE = col_character(),
+    `Region Type` = col_character(),
+    ASGS_2011_SA34_GCCSA_STE = col_character(),
+    Region = col_character(),
+    FREQUENCY = col_character(),
+    Frequency = col_character(),
+    TIME_FY = col_integer(),
+    Time = col_character(),
+    Value = col_integer(),
+    `Flag Codes` = col_character(),
+    Flags = col_character())) %>%
   select(`Migration Type`, `Age Group`, Sex, REGIONTYPE, Region, TIME_FY,
     Value) 
 
 regionMigrationDataMales <- read_csv(file.path(absFolder,
   paste0("3218-ABSSTAT_regional_movement_age_sex-2007-2015-males.csv")),
   col_types = cols(
-  RIM = col_integer(),
-  `Migration Type` = col_character(),
-  AGE = col_character(),
-  `Age Group` = col_character(),
-  SEX = col_integer(),
-  Sex = col_character(),
-  REGIONTYPE = col_character(),
-  `Region Type` = col_character(),
-  ASGS_2011_SA34_GCCSA_STE = col_character(),
-  Region = col_character(),
-  FREQUENCY = col_character(),
-  Frequency = col_character(),
-  TIME_FY = col_integer(),
-  Time = col_character(),
-  Value = col_integer(),
-  `Flag Codes` = col_character(),
-  Flags = col_character())) %>%
+    RIM = col_integer(),
+    `Migration Type` = col_character(),
+    AGE = col_character(),
+    `Age Group` = col_character(),
+    SEX = col_integer(),
+    Sex = col_character(),
+    REGIONTYPE = col_character(),
+    `Region Type` = col_character(),
+    ASGS_2011_SA34_GCCSA_STE = col_character(),
+    Region = col_character(),
+    FREQUENCY = col_character(),
+    Frequency = col_character(),
+    TIME_FY = col_integer(),
+    Time = col_character(),
+    Value = col_integer(),
+    `Flag Codes` = col_character(),
+    Flags = col_character())) %>%
   select(`Migration Type`, `Age Group`, Sex, REGIONTYPE, Region, TIME_FY,
     Value) 
 
 regionMigrationDataFemales <- read_csv(file.path(absFolder,
   paste0("3218-ABSSTAT_regional_movement_age_sex-2007-2015-females.csv")),
   col_types = cols(
-  RIM = col_integer(),
-  `Migration Type` = col_character(),
-  AGE = col_character(),
-  `Age Group` = col_character(),
-  SEX = col_integer(),
-  Sex = col_character(),
-  REGIONTYPE = col_character(),
-  `Region Type` = col_character(),
-  ASGS_2011_SA34_GCCSA_STE = col_character(),
-  Region = col_character(),
-  FREQUENCY = col_character(),
-  Frequency = col_character(),
-  TIME_FY = col_integer(),
-  Time = col_character(),
-  Value = col_integer(),
-  `Flag Codes` = col_character(),
-  Flags = col_character())) %>%
+    RIM = col_integer(),
+    `Migration Type` = col_character(),
+    AGE = col_character(),
+    `Age Group` = col_character(),
+    SEX = col_integer(),
+    Sex = col_character(),
+    REGIONTYPE = col_character(),
+    `Region Type` = col_character(),
+    ASGS_2011_SA34_GCCSA_STE = col_character(),
+    Region = col_character(),
+    FREQUENCY = col_character(),
+    Frequency = col_character(),
+    TIME_FY = col_integer(),
+    Time = col_character(),
+    Value = col_integer(),
+    `Flag Codes` = col_character(),
+    Flags = col_character())) %>%
   select(`Migration Type`, `Age Group`, Sex, REGIONTYPE, Region, TIME_FY,
     Value) 
 
@@ -700,7 +790,7 @@ regionMigrationData <- bind_rows(regionMigrationDataPersons,
   select(year, region, sex, age, type, value) %>%
   mutate(sex = tolower(sex), 
     type = tolower(type), age = tolower(age)) %>%
- # Tidy up strings
+  # Tidy up strings
   mutate(age = str_replace_all(age, " ", ""),
     type = str_sub(type, 22, -1),
     sex = ifelse(sex == "persons", "all", sex)) %>%
@@ -872,17 +962,17 @@ years <- 2004:2014
 
 # Initilize results data frame
 deathData <- data.frame(year = as.numeric(),
-                      state = as.character(),
-                      age = as.character(),
-                      gender = as.character(),
-                      deathrate = as.numeric())
+  state = as.character(),
+  age = as.character(),
+  gender = as.character(),
+  deathrate = as.numeric())
 
 # Loop through sheets extracting data we want
 for (ii in 2:(length(states) + 1)) {
   
   # Read in sheet from file
   tempData <- read_excel(file.path(absFolder,           
-      "33020do002_ABS_Deathrate_2014.xls"), sheet = ii, skip = 4)
+    "33020do002_ABS_Deathrate_2014.xls"), sheet = ii, skip = 4)
   
   # Extract the overall deathrates ---------------------------------------
   tempDataAll <- tempData %>%
@@ -898,8 +988,8 @@ for (ii in 2:(length(states) + 1)) {
     gather("year", "deathrate", 3:ncol(tempDataAll)) %>%
     mutate(year = as.numeric(year)) %>%
     mutate(age = "all",
-           gender = tolower(population),
-           deathrate = as.numeric(deathrate)) %>%
+      gender = tolower(population),
+      deathrate = as.numeric(deathrate)) %>%
     select(year, state, age, gender, deathrate)
   
   # Replae persons with all
@@ -919,9 +1009,9 @@ for (ii in 2:(length(states) + 1)) {
     gather("year", "deathrate", 3:ncol(tempDataMales)) %>%
     mutate(year = as.numeric(year)) %>%
     mutate(gender = "males",
-           deathrate = as.numeric(deathrate)) %>%
+      deathrate = as.numeric(deathrate)) %>%
     select(year, state, age, gender, deathrate)
-
+  
   # Females
   tempDataFemales <- tempData %>%
     slice(17:35) %>%
@@ -936,12 +1026,12 @@ for (ii in 2:(length(states) + 1)) {
     gather("year", "deathrate", 3:ncol(tempDataFemales)) %>%
     mutate(year = as.numeric(year)) %>%
     mutate(gender = "females",
-           deathrate = as.numeric(deathrate)) %>%
+      deathrate = as.numeric(deathrate)) %>%
     select(year, state, age, gender, deathrate)
   
   # Merge all the data into one data frame
   deathData <- bind_rows(deathData, tempDataAll, tempDataMales,
-                         tempDataFemales) %>% tbl_df
+    tempDataFemales) %>% tbl_df
   
 }
 
