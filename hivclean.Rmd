@@ -130,6 +130,8 @@ if (dataYear < 2017) {
   hivdata[hivdata$sex == 2,]$sex <- "female" 
   hivdata[hivdata$sex == 3,]$sex <- "transgender" 
   hivdata[hivdata$sex == 0,]$sex <- "unknown"
+  
+  hivdata$state <- tolower(hivdata$state)
 }
 
 # Add a classification for linkage to care based on CD4 count variable.
