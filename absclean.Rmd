@@ -618,7 +618,8 @@ write.csv(prospectionERP, file = file.path(cascadeDataFolder,
 
 # Once off data processing
 
-The following chunks process once off data files from the ABS. 
+The following chunk process a once off data file from the ABS but saves it for 
+each analysis year.
 
 ```{r Interstate migration by age and sex}
 # This chuck reads in the saved csv file downloaded from ABS.Stat with the 
