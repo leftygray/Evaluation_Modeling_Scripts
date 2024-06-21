@@ -33,7 +33,7 @@ cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "HIV", "data")
 
 # Primary script parameters
-dataYear <- 2022
+dataYear <- 2023
 
 ```
 
@@ -381,6 +381,11 @@ write.csv(ahodData, file = file.path(cascadeDataFolder,
   paste0("ahod", toString(dataYear),".csv")), row.names = FALSE)
 
 ```
+
+## Deprecated code ===========================================================
+
+The following sections of code are no longer used. They have been kept for
+reference. 
 
 ## ART data
 
