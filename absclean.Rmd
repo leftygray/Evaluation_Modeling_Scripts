@@ -39,7 +39,7 @@ source("TidyLongitudinal.R")
 states <- c("nsw", "vic", "qld", "sa", "wa", "tas", "nt", "act", "all")
 
 # Primary script parameters
-dataYear <- 2022 # Annual data from 2014
+dataYear <- 2023 # Annual data from 2014
 
 ```
 
@@ -325,7 +325,7 @@ nomData <- nomData |>
     type = `MIGRATIONTYPE: Migration Type`, 
     value = OBS_VALUE,
     year = `TIME_PERIOD: Time Period`, 
-    grouping = `MEASURE: Type of Visa`
+    grouping = starts_with("MEASURE:")
   ) |>
   # Clean up data 
   mutate(
