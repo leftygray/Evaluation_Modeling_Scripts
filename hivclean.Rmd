@@ -164,16 +164,69 @@ if (dataYear <= 2013) {
 }
 
 # Reclassification of exposure to the broad surveillance categories - may
-# need to change manually
-hivdata[hivdata$exposure == "1A", ]$exposure <- "msm"
+# need to change manually. 
+
+# Exposure codes from 2021 National HIV Notifications Dataset Specifications
+# ==========================================================================
+# 1A = Male to male sexual contact
+# 1A3A = Male to male sexual contact and injecting drug use
+# 1A3 = Male to male sexual contact and receipt of blood/tissue
+# 1B = Bisexual contact
+# 1B3A = Bisexual contact and injecting drug use
+# 1B2B = Bisexual contact with an injecting drug user
+# 1B3B = Bisexual contact and receipt of blood/tissue
+# 1B2E = Bisexual contact with a person born overseas
+# 1C2A = Heterosexual contact with bisexual male
+# 1C2A2B = Heterosexual contact with a bisexual injecting drug user
+# 1C2B = Heterosexual contact with an injecting drug user
+# 1C2C = Heterosexual contact with a person who received blood/tissue
+# 1C2E = Heterosexual contact with person born overseas
+# 1C2F = Heterosexual contact with person with HIV infection whose exposure is 
+# other than the specified exposures
+# 1C2G = Heterosexual contact with person with HIV infection whose exposure 
+# could not be established
+# 1C2H = Heterosexual contact, not further specified
+# 1C3A = Heterosexual contact and injecting drug use
+# 1C3B = Heterosexual contact and receipt of blood/tissue
+# 1C3A2B = Injecting drug use and heterosexual contact with an injecting drug 
+# user
+# 1C3A2E = Injecting drug use, and heterosexual contact with a person born 
+# overseas
+# 1E3A = No sexual contact, injecting drug use
+# 1E3B = No sexual contact, receipt of blood/tissue
+# 1F3A = Sexual exposure not known, injecting drug use
+# 1F3B = Sexual exposure not known, receipt of blood/tissue
+# 4A = Mother is an injecting drug user
+# 4B = Mother is a recipient of blood/tissue
+# 4C = Mother was born overseas
+# 4D = Mother has HIV infection, exposure not specified
+# 4E = Mother had sexual contact with a bisexual male
+# 4F = Mother had sexual contact with an injecting drug user
+# 4G = Mother had sexual contact with a recipient of blood/tissue
+# 4J = Mother had sexual contact with a person born overseas
+# 4K = Mother had sexual contact with a person with HIV infection whose exposure
+# could not be established
+# 5A = An exposure other than those above applies
+# 5A1 = Occupational exposure in a health care setting
+# 5A2 = Occupational exposure in a setting other than a health care setting
+# 5A3 = Other exposure in a health care setting
+# 5A4 = Other exposure in a setting other than a health care setting
+# 5B = Exposure to HIV remained undetermined
+# 1K = Non-cisgender sexual contact
+# 1K3A = Non-cisgender sexual contact and injecting drug use
+
+hivdata[hivdata$exposure == "1A", ]$exposure <- "msm" # 
 hivdata[hivdata$exposure == "1A3A", ]$exposure <- "msm-idu"
+hivdata[hivdata$exposure == "1A3", ]$exposure <- "msm"
 hivdata[hivdata$exposure == "1A3B", ]$exposure <- "msm"
 hivdata[hivdata$exposure == "1A3C", ]$exposure <- "msm"
 hivdata[hivdata$exposure == "1B", ]$exposure <- "bisex-male"
+hivdata[hivdata$exposure == "1B2B", ]$exposure <- "bisex-male"
 hivdata[hivdata$exposure == "1B3A", ]$exposure <- "bisex-male-idu"
-# hivdata[hivdata$exposure == "1B3B", ]$exposure <- "bisex-male"
+hivdata[hivdata$exposure == "1B3B", ]$exposure <- "bisex-male"
+hivdata[hivdata$exposure == "1B2E", ]$exposure <- "bisex-male"
 hivdata[hivdata$exposure == "1C2A", ]$exposure <- "hetero"
-# hivdata[hivdata$exposure == "1C2A2B", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C2A2B", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2B", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2C", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2D", ]$exposure <- "hetero"
@@ -182,29 +235,37 @@ hivdata[hivdata$exposure == "1C2F", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2G", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C2H", ]$exposure <- "hetero-unspecified"
 hivdata[hivdata$exposure == "1C3A", ]$exposure <- "hetero-idu"
+hivdata[hivdata$exposure == "1C3B", ]$exposure <- "hetero"
 hivdata[hivdata$exposure == "1C3A2B", ]$exposure <- "hetero-idu"
 hivdata[hivdata$exposure == "1C3A2E", ]$exposure <- "hetero-idu"
 hivdata[hivdata$exposure == "1C3B", ]$exposure <- "hetero"
-# hivdata[hivdata$exposure == "1C3C", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C3C", ]$exposure <- "hetero"
+hivdata[hivdata$exposure == "1C5A4", ]$exposure <- "hetero-unspecified"
 hivdata[hivdata$exposure == "1D", ]$exposure <- "hetero" #high-prev-country"
 hivdata[hivdata$exposure == "1E", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "1E3A", ]$exposure <- "idu"
 hivdata[hivdata$exposure == "1E3B", ]$exposure <- "blood-recipient"
 hivdata[hivdata$exposure == "1E3C", ]$exposure <- "blood-recipient"
+hivdata[hivdata$exposure == "1E4D", ]$exposure <- "blood-recipient"
+hivdata[hivdata$exposure == "1E4J", ]$exposure <- "blood-recipient"
 hivdata[hivdata$exposure == "1F", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "1F3A", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "1F3B", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "1F3C", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "1K", ]$exposure <- "transgender"
+hivdata[hivdata$exposure == "1K3A", ]$exposure <- "transgender"
+hivdata[hivdata$exposure == "2E", ]$exposure <- "hetero-unspecified"
 hivdata[hivdata$exposure == "4A", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4B", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4C", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4D", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4E", ]$exposure <- "mtct"
-# hivdata[hivdata$exposure == "4F", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4F", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4G", ]$exposure <- "mtct"
-# hivdata[hivdata$exposure == "4J", ]$exposure <- "mtct"
+hivdata[hivdata$exposure == "4J", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "4K", ]$exposure <- "mtct"
 hivdata[hivdata$exposure == "5A", ]$exposure <- "unknown"
+hivdata[hivdata$exposure == "5A0", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5A1", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5A2", ]$exposure <- "unknown"
 hivdata[hivdata$exposure == "5A3", ]$exposure <- "unknown"
@@ -216,7 +277,7 @@ hivdata[hivdata$exposure == "", ]$exposure <- "unknown"
 msmgroup <- c("msm","bisex-male","bisex-male-idu","msm-idu")
 pwidgroup <- c("idu","hetero-idu")
 heterogroup <- c("hetero","hetero-unspecified")
-othergroup <- c("high-prev-country","mtct","blood-recipient")
+othergroup <- c("high-prev-country","mtct","blood-recipient", "transgender")
 
 hivdata$expgroup <- rep(NA,nrow(hivdata))
 hivdata[hivdata$exposure %in% msmgroup,]$expgroup <- "msm"
