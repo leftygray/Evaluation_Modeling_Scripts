@@ -50,15 +50,11 @@ dataYear <- 2023 # Annual data from 2014
 
 # Read in second sheet skipping most of the bumph
 erpData <- read_excel(file.path(absFolder, 
-  paste0("310104-ABS_ERP_State_Overall-", toString(dataYear), ".xlsx")),
-  sheet = 2, skip = 9)
-
-# Delete unnecessary columns (keeping the last nine) 
-ncolumns <- ncol(erpData)
-erpData <- erpData[, c(1, 20:ncolumns)]
-
-# Convert first column to years 
-erpData[, 1] <- year(erpData$`Series ID`)
+  paste0("310104-ABS_ERP_State_Overall-", dataYear, ".xlsx")),
+  sheet = 2, skip = 9) |>
+  # Delete unnecessary columns (keeping the last nine) 
+  dplyr::select(c(1, 20:ncol(erpData))) |>
+  mutate(`Series ID` = year(`Series ID`)) # Extract year
 
 # Rename columns
 colnames(erpData) <- c("year", states)
@@ -136,11 +132,10 @@ departData <- read_excel(
 )
 
 # Delete unnecessary columns (keeping the first 4; quarter, permanent,
-# long-term resident, long-term visitor, total) 
-departData <- departData[, c(1:5)]
-
-# Convert first column to years 
-departData[, 1] <- year(departData$`Series ID`)
+# long-term resident, long-term visitor, total) and extract year
+departData <- departData |>
+  dplyr::select(c(1:5)) |>
+  mutate(`Series ID` = year(`Series ID`)) 
 
 # Rename columns
 colnames(departData) <- c("year", "permanent", "resident", "visitor", "total")
@@ -151,18 +146,18 @@ departData <- departData |>
   summarise(
     permanent = sum(permanent),
     resident = sum(resident),
-    visitor = sum(visitor),
-    total = sum(total)
+    visitor = sum(visitor)
   ) |>
   mutate(year = as.numeric(year)) |>  # Convert to correct data type
   ungroup() %>%
   inner_join(nationalERP, ., by = "year") |> # Add overall ERP
+  mutate(total_lt = resident + visitor) |> # calculate total long term departures
   mutate(
     overall = permanent + resident + visitor,
     rate_permanent = permanent / erp, # Calculate departure rates
     rate_resident = resident / erp,
     rate_vistor = visitor / erp,
-    rate_total = (resident + visitor) / erp,
+    rate_LT = total_lt / erp, 
     overall_rate = (permanent + resident + visitor) / erp
   ) 
 
