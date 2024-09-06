@@ -51,9 +51,9 @@ dataYear <- 2023 # Annual data from 2014
 # Read in second sheet skipping most of the bumph
 erpData <- read_excel(file.path(absFolder, 
   paste0("310104-ABS_ERP_State_Overall-", dataYear, ".xlsx")),
-  sheet = 2, skip = 9) |>
+  sheet = 2, skip = 9) %>%
   # Delete unnecessary columns (keeping the last nine) 
-  dplyr::select(c(1, 20:ncol(erpData))) |>
+  dplyr::select(c(1, 20:ncol(.))) |>
   mutate(`Series ID` = year(`Series ID`)) # Extract year
 
 # Rename columns
