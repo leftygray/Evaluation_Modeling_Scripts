@@ -45,7 +45,7 @@ cascadeDataFolder <- file.path("C:", "Users", "rgray", "UNSW",
   "Australian Care Cascades - Documents", "Chlamydia", "data")
 
 # Primary script parameters - data year 
-dataYear <- 2022
+dataYear <- 2023
 
 ```
 
@@ -218,7 +218,7 @@ if (dataYear == 2014) {
     "NNDSS", "SOURCE")
   
   rawDataFile <- file.path(rawDataDirectory, dataYear + 1, 
-    "Extract", "NNDSS_MASTER.dta") 
+    "NNDSS_MASTER.dta") 
   
   # Load the raw NNDSS notifications file and clean it up
   nndssdata <- read_dta(rawDataFile) 
