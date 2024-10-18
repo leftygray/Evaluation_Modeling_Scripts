@@ -21,7 +21,7 @@ LoadLibrary(haven)
 basePath <- file.path(dirname(getwd()))
 
 # Primary script parameters - data year 
-dataYear <- 2022
+dataYear <- 2023
 numYears <- 10
 
 years <- (dataYear - numYears + 1):dataYear 
@@ -37,9 +37,13 @@ rawDataDirectory <- file.path("/", "SVR-NAS", "Public", "SERP", "Data",
 
 # Load the raw NNDSS notifications file 
 rawDataFile <- file.path(rawDataDirectory, dataYear + 1,
-  "Extract","NNDSS_MASTER.dta")
+  "NNDSS_MASTER.dta")
 
-nndssdata <- read_dta(rawDataFile) 
+nndssdata <- read_dta(rawDataFile)
+  
+# For 2023 rename variables  
+nndssdata <- nndssdata |>
+  rename(REMOTE = remoteness, diagnosisdate = DIAG_DTE)
 
 # Extract the chlamydia, NG, syphilis and HCV notifications and key variables. 
 # Clean up dataframe
@@ -105,14 +109,15 @@ ngTotal <- ngdata %>%
 # Number in major cities
 ngMajorCities <- ngdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Major Cities of Australia" ) %>% 
+    #remote == "Major Cities of Australia" ) %>% 
+    remote == 1 ) %>% 
   group_by(year) %>%
   summarise(n = n())
 
 # Number where region is missing
 ngMissing <- ngdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Missing" ) %>% 
+    is.na(remote)) %>% 
   group_by(year) %>%
   summarise(n = n())
 
@@ -133,7 +138,7 @@ ngMSMdiags <- ngTotal %>%
 # Proportion of male diagnoses in GBM - major cities
 ngMajorCities_known <- ngdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Major Cities of Australia", remote != "Missing") %>%
+    remote == 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
   group_by(year) %>%
@@ -141,7 +146,7 @@ ngMajorCities_known <- ngdata %>%
 
 ngGBMMajorCities_known <- ngdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Major Cities of Australia", remote != "Missing") %>%
+    remote == 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
   group_by(year) %>%
@@ -152,7 +157,7 @@ propGBMcities <- ngGBMMajorCities_known$n/ngMajorCities_known$n
 # Proportion of male diagnoses in GBM - non-Major cities
 ngRegions_known <- ngdata %>% 
   filter(sex == "male", year %in% years,  
-    remote != "Major Cities of Australia", remote != "Missing") %>%
+    remote != 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
   group_by(year) %>%
@@ -160,7 +165,7 @@ ngRegions_known <- ngdata %>%
 
 ngGBMRegions_known <- ngdata %>% 
   filter(sex == "male", year %in% years, 
-    remote != "Major Cities of Australia", remote != "Missing" ) %>%
+    remote != 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
   group_by(year) %>%
@@ -183,24 +188,23 @@ write.csv(ngMSMdiags, file = file.path(cascadeDataFolder, "OtherSTIs",
 ```{r Proportion CT by region}
 
 ctOverall <- chlamdata %>%
-  filter(year %in% years, remote != "Missing") %>%
+  filter(year %in% years, !is.na(remote)) %>%
   group_by(year) %>%
   summarise(n = n())
 
 ctUrban <- chlamdata %>%
-  filter(year %in% years, remote %in% "Major Cities of Australia") %>%
+  filter(year %in% years, remote == 1) %>%
   group_by(year) %>%
   summarise(n = n())
 
 ctRegional <- chlamdata %>%
-  filter(year %in% years, remote %in% c("Inner Regional Australia", 
-    "Outer Regional Australia")) %>%
+  filter(year %in% years, remote == 2) %>%
   group_by(year) %>%
   summarise(n = n())
 
 ctRemote <- chlamdata %>%
   filter(year %in% years, 
-    remote %in% c("Remote Australia", "Very Remote Australia")) %>%
+    remote == 3) %>%
   group_by(year) %>%
   summarise(n = n())
 
@@ -235,7 +239,7 @@ tpTotal <- tpdata %>%
 # Number in major cities
 tpMajorCities <- tpdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Major Cities of Australia" ) %>% 
+    remote == 1) %>% 
   group_by(year) %>%
   summarise(n = n())
 # print(tpMajorCities)
@@ -243,7 +247,7 @@ tpMajorCities <- tpdata %>%
 # Number where region is missing
 tpMissing <- tpdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Missing" ) %>% 
+    is.na(remote)) %>% 
   group_by(year) %>%
   summarise(n = n())
 # print(tpMissing)
@@ -266,7 +270,7 @@ tpMSMdiags <- tpTotal %>%
 # Proportion of male diagnoses in GBM - major cities
 tpMajorCities <- tpdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Major Cities of Australia", remote != "Missing") %>%
+    remote == 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
   group_by(year) %>%
@@ -274,7 +278,7 @@ tpMajorCities <- tpdata %>%
 
 tpGBMMajorCities <- tpdata %>% 
   filter(sex == "male", year %in% years, 
-    remote == "Major Cities of Australia", remote != "Missing") %>%
+    remote == 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
   group_by(year) %>%
@@ -285,7 +289,7 @@ propGBMcitiesTP <- tpGBMMajorCities$n/tpMajorCities$n
 # Proportion of male diagnoses in GBM - non-Major cities
 tpRegions <- tpdata %>% 
   filter(sex == "male", year %in% years,  
-    remote != "Major Cities of Australia", remote != "Missing") %>%
+    remote != 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>% 
   filter(sexualexposure %in% c(1:3)) %>%
   group_by(year) %>%
@@ -293,7 +297,7 @@ tpRegions <- tpdata %>%
 
 tpGBMRegions <- tpdata %>% 
   filter(sex == "male", year %in% years, 
-    remote != "Major Cities of Australia", remote != "Missing" ) %>%
+    remote != 1, !is.na(remote)) %>%
   filter(!is.na(sexualexposure)) %>%
   filter(sexualexposure %in% c(2,3)) %>%
   group_by(year) %>%
